@@ -60,12 +60,8 @@ class PodcastAnalyzer:
         """Analyze a podcast episode and return detailed analysis."""
         try:
             logger.info(f"Starting analysis for: {audio_path}")
-            
-            # Read the audio file
-            logger.info("Reading audio file...")
             audio_data = Path(audio_path).read_bytes()
             
-            # Send the audio with the prompt
             logger.info("Sending audio to Gemini for analysis...")
             start_time = time.time()
             
@@ -78,8 +74,6 @@ class PodcastAnalyzer:
             ])
             
             analysis = response.text
-            
-            # Validate the analysis structure
             self.validate_analysis(analysis)
             
             logger.info(f"Analysis completed in {time.time() - start_time:.1f} seconds")
@@ -95,26 +89,15 @@ class PodcastAnalyzer:
         """Format analysis into a newsletter."""
         try:
             logger.info("Formatting newsletter...")
-            
-            # Validate analysis
             self.validate_analysis(analysis)
             
-            # Format header
             today = datetime.now().strftime("%B %d, %Y")
             newsletter = f"# Lettercast\n#### {today}\n\n"
             
-            # Add title if provided
             if title:
                 newsletter += f"## {title}\n\n"
             
-            # Format analysis sections
-            formatted_analysis = analysis.replace("KEY POINTS:", "**KEY POINTS:**")
-            formatted_analysis = formatted_analysis.replace("→", "•")
-            formatted_analysis = formatted_analysis.replace("TLDR:", "**TLDR:**")
-            formatted_analysis = formatted_analysis.replace("WHY NOW:", "**WHY NOW:**")
-            formatted_analysis = formatted_analysis.replace("QUOTED:", "**QUOTED:**")
-            
-            newsletter += formatted_analysis
+            newsletter += analysis
             
             logger.info("Newsletter formatting complete")
             return newsletter
@@ -135,7 +118,6 @@ class PodcastAnalyzer:
             with open(output_path, 'w') as f:
                 f.write(newsletter_text)
             
-            logger.info("Newsletter saved successfully")
             return output_path
         
         except Exception as e:
