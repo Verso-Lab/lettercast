@@ -1,12 +1,14 @@
 import os
 import json
 import logging
+from dotenv import load_dotenv
 from core import PodcastAnalyzer, transform_audio, download_audio
 from utils.logging_config import setup_logging
 
 logger = logging.getLogger(__name__)
 
 setup_logging()
+load_dotenv()
 
 def cleanup_files(downloaded_file, transformed_audio, context, result_path):
     """Delete files if they exist; respect Lambda context constraints."""
@@ -27,10 +29,9 @@ def lambda_handler(event, context=None):
     result_path = None
     
     try:
-        # Get API key from environment
-        api_key = os.environ.get('GEMINI_API_KEY')
+        api_key = os.getenv('GEMINI_API_KEY')
         if not api_key:
-            raise ValueError("GEMINI_API_KEY environment variable not set")
+            raise ValueError("GEMINI_API_KEY not found in environment variables or .env file")
         
         # Get audio URL from event or CLI input
         audio_url = event.get('audio_url') if isinstance(event, dict) else event
