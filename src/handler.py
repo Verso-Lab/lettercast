@@ -88,25 +88,4 @@ def lambda_handler(event, context=None):
         raise
         
     finally:
-        # Cleanup downloaded file
-        if downloaded_file and os.path.exists(downloaded_file):
-            os.unlink(downloaded_file)
-        # Cleanup result file if Lambda context
-        if context is not None and result_path and os.path.exists(result_path):
-            os.unlink(result_path)
-
-def main():
-    """CLI entry point"""
-    try:
-        audio_source = input("Enter URL or leave blank for default test: ").strip()
-        if not audio_source:
-            audio_source = "https://nyt.simplecastaudio.com/3026b665-46df-4d18-98e9-d1ce16bbb1df/episodes/13afee65-055d-4e1c-b6dc-66fd08977f03/audio/128/default.mp3"
-        response = lambda_handler(audio_source)
-        print("\nNewsletter generated successfully!")
-        print(f"Saved to: {json.loads(response['body'])['file_path']}")
-    except Exception as e:
-        print(f"\nError: {str(e)}")
-        exit(1)
-
-if __name__ == "__main__":
-    main()
+        cleanup_files(downloaded_file, transformed_audio, context, result_path)
