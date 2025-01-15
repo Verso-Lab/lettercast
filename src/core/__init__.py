@@ -1,10 +1,13 @@
-from .analyzer import PodcastAnalyzer
+from .analyzer import PodcastAnalyzer, AnalyzerError, InvalidAnalysisError
 from .audio import transform_audio
-from .newsletter import format_newsletter, save_newsletter
+from .downloader import download_audio
+from .prompts import PODCAST_ANALYSIS_PROMPT
 
 __all__ = [
     'PodcastAnalyzer',
+    'AnalyzerError',
+    'InvalidAnalysisError',
     'transform_audio',
-    'format_newsletter',
-    'save_newsletter'
+    'download_audio',
+    'PODCAST_ANALYSIS_PROMPT'
 ] 

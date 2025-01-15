@@ -3,16 +3,25 @@ import google.generativeai as genai
 from pathlib import Path
 import logging
 import time
+from datetime import datetime
+from typing import Optional
+from .prompts import PODCAST_ANALYSIS_PROMPT
+from utils import get_logger
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
+
+class AnalyzerError(Exception):
+    """Base class for analyzer-related errors"""
+    pass
+
+class InvalidAnalysisError(AnalyzerError):
+    """Raised when analysis content is invalid or missing required sections"""
+    pass
 
 class PodcastAnalyzer:
+    # Required sections in analysis output
+    REQUIRED_SECTIONS = ['TLDR:', 'WHY NOW:', 'KEY POINTS:', 'QUOTED:']
+    
     def __init__(self, api_key):
         """Initialize the analyzer with a Gemini API key"""
         logger.info("Initializing PodcastAnalyzer")
@@ -38,97 +47,124 @@ class PodcastAnalyzer:
         )
         logger.info("Gemini model initialized")
     
-    def analyze_audio_detailed(self, audio_path):
-        """First pass: Get detailed analysis of a podcast episode"""
-        DETAILED_PROMPT = """Analyze this podcast episode in detail. Focus on capturing:
-
-1. Main Topic & Context: What's being discussed and why it matters now
-2. Key Arguments/Points: The most important ideas and insights shared
-3. Notable Moments: Surprising facts, strong opinions, or memorable exchanges
-4. Best Quotes: The most impactful or revealing statements (with speaker attribution)
-5. Implications: The bigger picture takeaways or why this matters
-
-Be thorough but clear - this is our source material for the final newsletter."""
-
+    def validate_analysis(self, analysis: str) -> None:
+        """Validate that analysis contains required sections."""
+        missing = [section for section in self.REQUIRED_SECTIONS if section not in analysis]
+        if missing:
+            raise InvalidAnalysisError(
+                f"Analysis missing required sections: {', '.join(missing)}"
+            )
+    
+    def analyze_audio_detailed(self, audio_path: str) -> str:
+        """Analyze a podcast episode and return detailed analysis."""
         try:
-            logger.info(f"Starting detailed analysis for: {audio_path}")
+            logger.info(f"Starting analysis for: {audio_path}")
             
             # Read the audio file
             logger.info("Reading audio file...")
             audio_data = Path(audio_path).read_bytes()
             
             # Send the audio with the prompt
-            logger.info("Sending audio to Gemini for detailed analysis...")
+            logger.info("Sending audio to Gemini for analysis...")
             start_time = time.time()
             
             response = self.model.generate_content([
-                DETAILED_PROMPT,
+                PODCAST_ANALYSIS_PROMPT,
                 {
                     "mime_type": "audio/mp3",
                     "data": audio_data
                 }
             ])
             
-            logger.info(f"Detailed analysis completed in {time.time() - start_time:.1f} seconds")
-            return response.text
+            analysis = response.text
+            
+            # Validate the analysis structure
+            self.validate_analysis(analysis)
+            
+            logger.info(f"Analysis completed in {time.time() - start_time:.1f} seconds")
+            return analysis
                 
+        except InvalidAnalysisError:
+            raise
         except Exception as e:
-            logger.error(f"Error in detailed analysis: {str(e)}", exc_info=True)
-            return f"Error in detailed analysis: {str(e)}"
-
-    def generate_cohesive_newsletter(self, podcast_analyses):
-        """Generate a cohesive newsletter from multiple podcast analyses"""
-        NEWSLETTER_PROMPT = """Write a sharp, insider-style briefing based ONLY on the podcast episode analyses provided below.
-Do not add any episodes or information that wasn't provided.
-
-Start with this exact format:
-
-# Today's Podcast Briefing
-
-Hey! [One punchy line introeducing the briefing]
-
----
-
-Then for each provided podcast analysis, format exactly like this:
-
-## [Podcast Name]
-
-TLDR: [One punchy line that nails what this episode is really about]
-
-WHY NOW: [Quick context on the timing/relevance]
-
-KEY POINTS:
-→ [First insight - be specific and surprising]
-→ [Second insight - focus on what's newsworthy]
-→ [Third insight - highlight what matters most]
-
-QUOTED: "[Choose the single most powerful quote]" —[Speaker]
-
----
-
-That's it. Hear ya later!
-
--------
-
-Keep it tight and conversational. No jargon, no fluff. Write ONLY about the podcasts provided in the analysis."""
-
+            logger.error(f"Error in analysis: {str(e)}", exc_info=True)
+            raise AnalyzerError(f"Analysis failed: {str(e)}")
+    
+    def format_newsletter(self, analysis: str, title: Optional[str] = None) -> str:
+        """Format analysis into a newsletter."""
         try:
-            logger.info(f"Generating newsletter from {len(podcast_analyses)} analyses...")
-            start_time = time.time()
+            logger.info("Formatting newsletter...")
             
-            # Prepare the input by combining podcast name and analysis
-            combined_input = "Here are the podcast episode analyses to include (and ONLY these):\n\n"
-            for podcast_name, analysis in podcast_analyses.items():
-                combined_input += f"# {podcast_name}\n\n{analysis}\n\n---\n\n"
+            # Validate analysis
+            self.validate_analysis(analysis)
             
-            response = self.model.generate_content([
-                NEWSLETTER_PROMPT,
-                combined_input
-            ])
+            # Format header
+            today = datetime.now().strftime("%B %d, %Y")
+            newsletter = f"# Lettercast\n#### {today}\n\n"
             
-            logger.info(f"Newsletter generated in {time.time() - start_time:.1f} seconds")
-            return response.text
-                
+            # Add title if provided
+            if title:
+                newsletter += f"## {title}\n\n"
+            
+            # Format analysis sections
+            formatted_analysis = analysis.replace("KEY POINTS:", "**KEY POINTS:**")
+            formatted_analysis = formatted_analysis.replace("→", "•")
+            formatted_analysis = formatted_analysis.replace("TLDR:", "**TLDR:**")
+            formatted_analysis = formatted_analysis.replace("WHY NOW:", "**WHY NOW:**")
+            formatted_analysis = formatted_analysis.replace("QUOTED:", "**QUOTED:**")
+            
+            newsletter += formatted_analysis
+            
+            logger.info("Newsletter formatting complete")
+            return newsletter
+        
+        except InvalidAnalysisError:
+            raise
         except Exception as e:
-            logger.error(f"Error generating newsletter: {str(e)}", exc_info=True)
-            return f"Error generating newsletter: {str(e)}" 
+            logger.error(f"Error formatting newsletter: {str(e)}", exc_info=True)
+            raise AnalyzerError(f"Failed to format newsletter: {str(e)}")
+    
+    def save_newsletter(self, newsletter_text: str, output_path: Optional[str] = None) -> str:
+        """Save newsletter to a file."""
+        try:
+            if not output_path:
+                output_path = f"newsletters/lettercast_{datetime.now().strftime('%Y%m%d')}.md"
+            
+            logger.info(f"Saving newsletter to: {output_path}")
+            with open(output_path, 'w') as f:
+                f.write(newsletter_text)
+            
+            logger.info("Newsletter saved successfully")
+            return output_path
+        
+        except Exception as e:
+            logger.error(f"Error saving newsletter: {str(e)}", exc_info=True)
+            raise AnalyzerError(f"Failed to save newsletter: {str(e)}")
+    
+    def process_podcast(self, audio_path: str, title: Optional[str] = None, output_path: Optional[str] = None) -> str:
+        """Process a podcast from audio to saved newsletter.
+        
+        Args:
+            audio_path: Path to the audio file
+            title: Optional podcast title
+            output_path: Optional path to save newsletter
+            
+        Returns:
+            str: Path to saved newsletter file
+            
+        Raises:
+            AnalyzerError: If any step fails
+        """
+        try:
+            # Analyze audio
+            analysis = self.analyze_audio_detailed(audio_path)
+            
+            # Format newsletter
+            newsletter = self.format_newsletter(analysis, title)
+            
+            # Save and return path
+            return self.save_newsletter(newsletter, output_path)
+            
+        except Exception as e:
+            logger.error(f"Error processing podcast: {str(e)}", exc_info=True)
+            raise AnalyzerError(f"Failed to process podcast: {str(e)}") 

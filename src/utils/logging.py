@@ -11,13 +11,6 @@ def setup_lambda_logging():
         for handler in root.handlers:
             root.removeHandler(handler)
     
-    # Set up basic configuration
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
-    
     # Create a JSON formatter for structured logging
     class JsonFormatter(logging.Formatter):
         def format(self, record):
@@ -40,6 +33,11 @@ def setup_lambda_logging():
     # Create and add handler with JSON formatter
     handler = logging.StreamHandler()
     handler.setFormatter(JsonFormatter())
+    
+    # Set root logger level
+    root.setLevel(logging.INFO)
+    
+    # Add only the JSON handler
     root.addHandler(handler)
     
     return logging.getLogger(__name__)

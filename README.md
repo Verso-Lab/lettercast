@@ -1,35 +1,63 @@
-# Podcast Newsletter Generator
+# Lettercast
 
-A Streamlit app that analyzes podcasts and generates sharp, insider-style briefings.
+AI-powered podcast analysis system that generates newsletter summaries using Google's Gemini API.
+
+## Requirements
+
+- Python 3.13+
+- Poetry
+- FFmpeg
+- Google Cloud API key (Gemini)
 
 ## Setup
 
-1. Clone this repository
-2. Install dependencies:
+1. Install dependencies:
 ```bash
-pip install -r requirements.txt
+poetry install
 ```
 
-3. Create a `.env` file in the root directory with your Gemini API key:
+2. Configure environment:
+Create a `.env` file in the project root:
 ```
-GEMINI_API_KEY=your_api_key_here
+GEMINI_API_KEY=your-api-key-here
 ```
 
-4. Install ffmpeg (required for audio processing):
-- Mac: `brew install ffmpeg`
-- Ubuntu: `sudo apt-get install ffmpeg`
-- Windows: Download from https://ffmpeg.org/download.html
+## Usage
 
-## Running Locally
-
+To test, run the analyzer:
 ```bash
-streamlit run podcast_streamlit.py
+poetry run python src/handler.py
 ```
 
-## Deploying to Streamlit Cloud
+## Project Structure
 
-1. Push your code to GitHub
-2. Go to [share.streamlit.io](https://share.streamlit.io)
-3. Deploy from your GitHub repository
-4. Add your `GEMINI_API_KEY` in the Streamlit Cloud secrets management
-5. Deploy! 
+```
+lettercast/
+├── src/
+│   ├── core/
+│   │   ├── analyzer.py     # Main analysis logic
+│   │   ├── audio.py        # Audio processing
+│   │   ├── downloader.py   # Podcast downloading
+│   │   └── prompts.py      # Analysis prompts
+│   ├── utils/
+│   │   └── logging.py      # Structured logging
+│   └── handler.py          # Main entry point
+└── newsletters/            # Generated analyses
+```
+
+## Development Notes
+
+- Use the provided logger:
+```python
+from utils import get_logger
+logger = get_logger(__name__)
+```
+
+- Known Issues:
+  - gRPC shutdown warning can be safely ignored: `grpc_wait_for_shutdown_with_timeout() timed out`
+
+## Troubleshooting
+
+- FFmpeg not found: `brew install ffmpeg`
+- API errors: Verify Gemini API key and quota
+- Memory issues: Check audio file size and compression settings

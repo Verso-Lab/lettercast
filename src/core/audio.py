@@ -4,8 +4,9 @@ import time
 from pathlib import Path
 from pydub import AudioSegment
 import tempfile
+from utils import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 def transform_audio(audio_path):
     """Transform audio to reduce file size and optimize for Gemini API"""

@@ -5,6 +5,9 @@
 downloads/
 *.mp3
 
+# Newsletters
+newsletters/
+
 # Python
 __pycache__/
 *.py[cod]
@@ -32,6 +35,3 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db
-
-# Streamlit
-.streamlit/secrets.toml

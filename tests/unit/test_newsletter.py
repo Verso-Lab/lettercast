@@ -1,11 +1,17 @@
 import pytest
+import os
 from datetime import datetime
-from core import format_newsletter, save_newsletter
+from core.newsletter import (
+    format_newsletter,
+    save_newsletter,
+    validate_analysis,
+    InvalidAnalysisError,
+    NewsletterError
+)
 
 @pytest.fixture
-def sample_analyses():
-    return {
-        "test.mp3": """
+def sample_analysis():
+    return """
 TLDR: Test summary
 
 WHY NOW: Test context
@@ -17,14 +23,34 @@ KEY POINTS:
 
 QUOTED: "Test quote" —Speaker
 """
-    }
 
-def test_format_newsletter(sample_analyses):
-    """Test newsletter formatting"""
-    result = format_newsletter(sample_analyses)
+@pytest.fixture
+def invalid_analysis():
+    return """
+TLDR: Test summary
+
+KEY POINTS:
+→ Point 1
+"""
+
+def test_validate_analysis(sample_analysis):
+    """Test analysis validation with valid content"""
+    validate_analysis(sample_analysis)  # Should not raise
+
+def test_validate_analysis_invalid(invalid_analysis):
+    """Test analysis validation with missing sections"""
+    with pytest.raises(InvalidAnalysisError) as exc:
+        validate_analysis(invalid_analysis)
+    assert "missing required sections" in str(exc.value)
+    assert "WHY NOW:" in str(exc.value)
+    assert "QUOTED:" in str(exc.value)
+
+def test_format_newsletter(sample_analysis):
+    """Test newsletter formatting with valid analysis"""
+    result = format_newsletter(sample_analysis)
     
     # Check basic structure
-    assert "# Podcast Briefing" in result
+    assert "# Podcast Brief" in result
     assert datetime.now().strftime("%B %d") in result
     
     # Check formatting
@@ -34,18 +60,24 @@ def test_format_newsletter(sample_analyses):
     assert "**QUOTED:**" in result
     
     # Check content
-    assert "test.mp3" in result
     assert "Test summary" in result
     assert "Test quote" in result
 
-def test_format_newsletter_empty():
-    """Test newsletter formatting with empty analyses"""
-    result = format_newsletter({})
-    assert "# Podcast Briefing" in result
-    assert "Quick update on today's episodes" in result
+def test_format_newsletter_with_title(sample_analysis):
+    """Test newsletter formatting with podcast title"""
+    title = "Test Podcast"
+    result = format_newsletter(sample_analysis, title)
+    
+    assert f"## {title}" in result
+    assert "Test summary" in result
+
+def test_format_newsletter_invalid(invalid_analysis):
+    """Test newsletter formatting with invalid analysis"""
+    with pytest.raises(InvalidAnalysisError):
+        format_newsletter(invalid_analysis)
 
 def test_save_newsletter(tmp_path):
-    """Test newsletter saving"""
+    """Test newsletter saving with custom path"""
     test_content = "Test newsletter content"
     output_path = tmp_path / "test_newsletter.md"
     
@@ -58,7 +90,7 @@ def test_save_newsletter(tmp_path):
 def test_save_newsletter_default_path():
     """Test newsletter saving with default path"""
     test_content = "Test newsletter content"
-    expected_filename = f"podcast_digest_{datetime.now().strftime('%Y%m%d')}.md"
+    expected_filename = f"podcast_brief_{datetime.now().strftime('%Y%m%d')}.md"
     
     try:
         result = save_newsletter(test_content)
@@ -71,4 +103,13 @@ def test_save_newsletter_default_path():
     finally:
         # Cleanup
         if os.path.exists(result):
-            os.unlink(result) 
+            os.unlink(result)
+
+def test_save_newsletter_error(tmp_path):
+    """Test newsletter saving with write error"""
+    test_content = "Test newsletter content"
+    output_path = tmp_path / "nonexistent" / "test.md"
+    
+    with pytest.raises(NewsletterError) as exc:
+        save_newsletter(test_content, str(output_path))
+    assert "Failed to save newsletter" in str(exc.value) 
