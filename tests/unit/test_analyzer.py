@@ -68,7 +68,7 @@ def test_validate_analysis_invalid(analyzer, invalid_analysis):
     assert "QUOTED:" in str(exc.value)
 
 @patch('pathlib.Path.read_bytes')
-def test_analyze_audio_detailed(mock_read_bytes, analyzer, mock_genai, sample_analysis):
+def test_analyze_audio(mock_read_bytes, analyzer, mock_genai, sample_analysis):
     """Test audio analysis with mock response"""
     # Mock file reading
     mock_read_bytes.return_value = b'fake audio data'
@@ -76,7 +76,7 @@ def test_analyze_audio_detailed(mock_read_bytes, analyzer, mock_genai, sample_an
     # Set up mock response
     analyzer.model.generate_content.return_value.text = sample_analysis
     
-    result = analyzer.analyze_audio_detailed("test.mp3")
+    result = analyzer.analyze_audio("test.mp3")
     assert result == sample_analysis
     analyzer.model.generate_content.assert_called_once()
     mock_read_bytes.assert_called_once()
@@ -91,7 +91,7 @@ def test_analyze_audio_invalid_response(mock_read_bytes, analyzer, mock_genai, i
     analyzer.model.generate_content.return_value.text = invalid_analysis
     
     with pytest.raises(InvalidAnalysisError):
-        analyzer.analyze_audio_detailed("test.mp3")
+        analyzer.analyze_audio("test.mp3")
     
     mock_read_bytes.assert_called_once()
 

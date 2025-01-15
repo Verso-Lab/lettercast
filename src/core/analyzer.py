@@ -56,7 +56,7 @@ class PodcastAnalyzer:
                 f"Analysis missing required sections: {', '.join(missing)}"
             )
     
-    def analyze_audio_detailed(self, audio_path: str) -> str:
+    def analyze_audio(self, audio_path: str) -> str:
         """Analyze a podcast episode and return detailed analysis."""
         try:
             logger.info(f"Starting analysis for: {audio_path}")
@@ -158,7 +158,7 @@ class PodcastAnalyzer:
         """
         try:
             # Analyze audio
-            analysis = self.analyze_audio_detailed(audio_path)
+            analysis = self.analyze_audio(audio_path)
             
             # Format newsletter
             newsletter = self.format_newsletter(analysis, title)
