@@ -18,16 +18,20 @@ poetry install
 
 2. Configure environment:
 Create a `.env` file in the project root:
-```
-GEMINI_API_KEY=your-api-key-here
+```bash
+echo "GEMINI_API_KEY=your-api-key-here" > .env
 ```
 
 ## Usage
 
-To test, run the analyzer:
+Run the CLI:
 ```bash
-poetry run python src/handler.py
+poetry run python src/cli.py
 ```
+
+You can either:
+- Enter a podcast URL when prompted
+- Press Enter without a URL to analyze a default test podcast
 
 ## Project Structure
 
@@ -41,16 +45,20 @@ lettercast/
 │   │   └── prompts.py      # Analysis prompts
 │   ├── utils/
 │   │   └── logging.py      # Structured logging
-│   └── handler.py          # Main entry point
+│   ├── handler.py          # Lambda handler
+│   └── cli.py              # CLI entry point
 └── newsletters/            # Generated analyses
 ```
 
 ## Development Notes
 
-- Use the provided logger:
+- Logging Setup:
 ```python
-from utils import get_logger
-logger = get_logger(__name__)
+import logging
+from utils.logging_config import setup_logging
+
+logger = logging.getLogger(__name__)
+setup_logging()
 ```
 
 - Known Issues:
