@@ -8,6 +8,18 @@ logger = logging.getLogger(__name__)
 
 setup_logging()
 
+def cleanup_files(downloaded_file, transformed_audio, context, result_path):
+    """Delete files if they exist; respect Lambda context constraints."""
+    # Cleanup transformed audio
+    if transformed_audio and os.path.exists(transformed_audio):
+        os.unlink(transformed_audio)
+    # Cleanup downloaded file
+    if downloaded_file and os.path.exists(downloaded_file):
+        os.unlink(downloaded_file)
+    # Cleanup result file if Lambda context
+    if context is not None and result_path and os.path.exists(result_path):
+        os.unlink(result_path)
+
 def lambda_handler(event, context=None):
     """AWS Lambda handler for podcast analysis"""
     downloaded_file = None
@@ -36,34 +48,33 @@ def lambda_handler(event, context=None):
         logger.info("Transforming audio...")
         transformed_audio = transform_audio(downloaded_file)
         
-        try:
-            # Process podcast (analyze, format, and save)
-            logger.info("Processing podcast...")
-            title = os.path.basename(audio_url)
-            output_path = f"newsletters/lettercast_{os.path.splitext(title)[0]}.md"
-            
-            result_path = analyzer.process_podcast(
-                transformed_audio,
-                title=title,
-                output_path=output_path
-            )
-            
-            # Read the generated newsletter
-            with open(result_path) as f:
-                newsletter = f.read()
-            
-            # Return appropriate response based on context
-            if context is None:
-                logger.info(f"Newsletter saved to: {result_path}")
-                return {
-                    'statusCode': 200,
-                    'body': json.dumps({
-                        'newsletter': newsletter,
-                        'file_path': result_path
-                    })
-                }
-            
-            # Return Lambda response
+        # Process podcast (analyze, format, and save)
+        logger.info("Processing podcast...")
+        title = os.path.basename(audio_url)
+        output_path = f"newsletters/lettercast_{os.path.splitext(title)[0]}.md"
+        
+        result_path = analyzer.process_podcast(
+            transformed_audio,
+            title=title,
+            output_path=output_path
+        )
+        
+        # Read the generated newsletter
+        with open(result_path) as f:
+            newsletter = f.read()
+        
+        if context is None:
+            # Running locally
+            logger.info(f"Newsletter saved to: {result_path}")
+            return {
+                'statusCode': 200,
+                'body': json.dumps({
+                    'newsletter': newsletter,
+                    'file_path': result_path
+                })
+            }
+        else:
+            # In Lambda environment
             return {
                 'statusCode': 200,
                 'body': json.dumps({
@@ -71,11 +82,6 @@ def lambda_handler(event, context=None):
                 })
             }
             
-        finally:
-            # Cleanup transformed audio
-            if transformed_audio and os.path.exists(transformed_audio):
-                os.unlink(transformed_audio)
-                
     except Exception as e:
         logger.error(f"Error processing request: {str(e)}", exc_info=True)
         if context is not None:
