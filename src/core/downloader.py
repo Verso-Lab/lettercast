@@ -5,9 +5,11 @@ import requests
 import time
 from pathlib import Path
 from urllib.parse import urlparse
-from utils import get_logger
+from utils.logging_config import setup_logging
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
+
+setup_logging()
 
 # Lambda constraints
 MAX_FILE_SIZE_MB = 450  # Leave buffer for other files

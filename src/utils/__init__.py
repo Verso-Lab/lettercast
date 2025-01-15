@@ -1,6 +1,5 @@
-from .logging import setup_lambda_logging, get_logger
+from .logging_config import setup_logging
 
 __all__ = [
-    'setup_lambda_logging',
-    'get_logger'
+    'setup_logging'
 ] 

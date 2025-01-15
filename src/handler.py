@@ -2,9 +2,11 @@ import os
 import json
 import logging
 from core import PodcastAnalyzer, transform_audio, download_audio
-from utils import setup_lambda_logging
+from utils.logging_config import setup_logging
 
-logger = setup_lambda_logging()
+logger = logging.getLogger(__name__)
+
+setup_logging()
 
 def lambda_handler(event, context=None):
     """AWS Lambda handler for podcast analysis"""

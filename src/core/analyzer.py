@@ -6,9 +6,10 @@ import time
 from datetime import datetime
 from typing import Optional
 from .prompts import PODCAST_ANALYSIS_PROMPT
-from utils import get_logger
+from utils.logging_config import setup_logging
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
+setup_logging()
 
 class AnalyzerError(Exception):
     """Base class for analyzer-related errors"""
