@@ -60,7 +60,7 @@ def test_handler_success(mock_env, mock_download_audio, mock_transform_audio, mo
     mock_analyzer.process_podcast.assert_called_once_with(
         '/tmp/transformed.mp3',
         title='podcast.mp3',
-        output_path='podcast_brief_podcast.md'
+        output_path='newsletters/lettercast_podcast.md'
     )
 
 @patch('os.unlink')

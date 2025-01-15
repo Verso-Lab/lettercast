@@ -1,11 +1,12 @@
 import pytest
 import os
 from unittest.mock import Mock, patch
-from core import PodcastAnalyzer, transform_audio, format_newsletter, save_newsletter
+from src.core import PodcastAnalyzer
+from src.core.audio import transform_audio
 
 @pytest.fixture
 def mock_genai():
-    with patch('google.generativeai') as mock:
+    with patch('src.core.analyzer.genai') as mock:
         mock_response = Mock()
         mock_response.text = """
 TLDR: Test summary
@@ -19,15 +20,22 @@ KEY POINTS:
 
 QUOTED: "Test quote" —Speaker
 """
-        mock.GenerativeModel.return_value.generate_content.return_value = mock_response
+        # Mock the model and its response
+        mock_model = Mock()
+        mock_model.generate_content = Mock(return_value=mock_response)
+        mock.GenerativeModel = Mock(return_value=mock_model)
+        
         yield mock
 
 @pytest.fixture
 def mock_audio_segment():
-    with patch('core.audio.AudioSegment') as mock:
+    with patch('src.core.audio.AudioSegment') as mock:
         mock_audio = Mock()
         mock_audio.channels = 2
         mock_audio.frame_rate = 44100
+        mock_audio.set_channels.return_value = mock_audio
+        mock_audio.set_frame_rate.return_value = mock_audio
+        mock_audio.export.return_value = None
         mock.from_file.return_value = mock_audio
         yield mock
 
@@ -40,29 +48,23 @@ def temp_audio_file(tmp_path):
 
 def test_full_pipeline(mock_genai, mock_audio_segment, temp_audio_file, tmp_path):
     """Test the full pipeline from audio to newsletter"""
-    # Initialize analyzer
     analyzer = PodcastAnalyzer('test-key')
+    transformed_audio = None
     
     try:
         # Transform audio
         transformed_audio = transform_audio(temp_audio_file)
         assert os.path.exists(transformed_audio)
         
-        # Analyze audio
-        analysis = analyzer.analyze_audio_detailed(transformed_audio)
-        assert "Test summary" in analysis
-        
-        # Create newsletter
-        analyses = {os.path.basename(temp_audio_file): analysis}
-        newsletter = format_newsletter(analyses)
-        assert "Test summary" in newsletter
-        
-        # Save newsletter
-        output_path = tmp_path / "test_newsletter.md"
-        saved_path = save_newsletter(newsletter, str(output_path))
-        assert os.path.exists(saved_path)
+        # Analyze audio and create newsletter
+        saved_path = analyzer.process_podcast(
+            transformed_audio,
+            title=os.path.basename(temp_audio_file),
+            output_path=str(tmp_path / "test_newsletter.md")
+        )
         
         # Verify final output
+        assert os.path.exists(saved_path)
         with open(saved_path) as f:
             content = f.read()
             assert "Test summary" in content
@@ -70,5 +72,5 @@ def test_full_pipeline(mock_genai, mock_audio_segment, temp_audio_file, tmp_path
     
     finally:
         # Cleanup
-        if os.path.exists(transformed_audio):
+        if transformed_audio and os.path.exists(transformed_audio):
             os.unlink(transformed_audio) 

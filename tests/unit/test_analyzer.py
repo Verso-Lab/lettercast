@@ -144,7 +144,8 @@ def test_save_newsletter(analyzer, tmp_path):
 def test_save_newsletter_default_path(analyzer):
     """Test newsletter saving with default path"""
     test_content = "Test newsletter content"
-    expected_filename = f"podcast_brief_{datetime.now().strftime('%Y%m%d')}.md"
+    expected_filename = f"lettercast_{datetime.now().strftime('%Y%m%d')}.md"
+    result = None
     
     try:
         result = analyzer.save_newsletter(test_content)
@@ -156,7 +157,7 @@ def test_save_newsletter_default_path(analyzer):
             
     finally:
         # Cleanup
-        if os.path.exists(result):
+        if result and os.path.exists(result):
             os.unlink(result)
 
 def test_save_newsletter_error(analyzer, tmp_path):
