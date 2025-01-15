@@ -17,7 +17,7 @@ Use the following format **exactly** (with the headings in all caps). Do not inc
 - [Insight #3: Highlight what truly stands out]
 
 **QUOTED:**  
-"[[Most powerful or revealing quote here]]" —[Speaker]
+"Most powerful or revealing quote here" —Speaker
 
 **TAKEAWAYS:**  
 - [Lesson or principle #1 - don't include a title or number, just the takeaway]
@@ -37,5 +37,6 @@ Use the following format **exactly** (with the headings in all caps). Do not inc
 You... [List the types of listeners who would find this episode relevant or entertaining, e.g., “You enjoy informal chats about tech trends,” “You love nuanced debates about leadership,” etc.]
 
 **SKIP IF:**  
-You... [List reasons some listeners might not enjoy it, e.g., “You prefer short-form episodes under 15 minutes,” “You want immediate, concrete how-to tips,” etc. — avoid reasons that may seem judgmental or elitist, such as "You prefer quick and easy answers to complex issues."]
+You... [List neutral reasons someone might opt out, such as “You prefer episodes that focus narrowly on one specific topic”
+or “You’re not interested in conceptual or theoretical conversations.” Avoid implying that one preference is better or worse than another—just state the preference in a matter-of-fact way.]
 """ 
