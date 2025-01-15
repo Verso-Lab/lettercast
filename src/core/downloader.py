@@ -5,6 +5,7 @@ import requests
 import time
 from pathlib import Path
 from urllib.parse import urlparse
+from tqdm.auto import tqdm
 from utils.logging_config import setup_logging
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,12 @@ def download_audio(url, chunk_size=8192):
         # Check file size before downloading
         response = requests.head(url)
         total_size = int(response.headers.get('content-length', 0))
+        
+        # If HEAD request doesn't return size, try GET with stream
+        if total_size == 0:
+            response = requests.get(url, stream=True)
+            total_size = int(response.headers.get('content-length', 0))
+        
         size_mb = total_size / (1024 * 1024)
         
         if size_mb > MAX_FILE_SIZE_MB:
@@ -60,12 +67,22 @@ def download_audio(url, chunk_size=8192):
         )
         temp_path = temp_file.name
         
+        # If we already have a GET response, use it; otherwise make the request
+        if response.request.method != 'GET':
+            response = requests.get(url, stream=True)
+        
         # Stream download
-        response = requests.get(url, stream=True)
         response.raise_for_status()
         
         downloaded = 0
-        with temp_file:
+        with temp_file, tqdm(
+            total=total_size,
+            unit='iB',
+            unit_scale=True,
+            unit_divisor=1024,
+            desc=f"Downloading {os.path.basename(parsed.path)}",
+            miniters=1
+        ) as pbar:
             for chunk in response.iter_content(chunk_size=chunk_size):
                 if chunk:
                     # Check timeout
@@ -74,16 +91,10 @@ def download_audio(url, chunk_size=8192):
                             f"Download exceeded {MAX_DOWNLOAD_SECONDS}s Lambda timeout limit"
                         )
                     
+                    size = len(chunk)
                     temp_file.write(chunk)
-                    downloaded += len(chunk)
-                    
-                    # Log progress every 10%
-                    if total_size and downloaded % (total_size // 10) < chunk_size:
-                        progress = (downloaded / total_size) * 100
-                        elapsed = time.time() - start_time
-                        logger.info(
-                            f"Download progress: {progress:.1f}% ({elapsed:.1f}s elapsed)"
-                        )
+                    downloaded += size
+                    pbar.update(size)
         
         logger.info(f"Download completed in {time.time() - start_time:.1f}s")
         return temp_path
