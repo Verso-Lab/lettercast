@@ -53,7 +53,19 @@ class PodcastAnalyzer:
             model_name="gemini-2.0-flash-exp",
             generation_config=generation_config,
         )
+        
+        # Cache of file hashes and sizes to avoid re-uploading
+        self.file_cache = {}
+        self.file_sizes = {}
         logger.info("Gemini model initialized")
+    
+    def _get_file_hash(self, file_path: str) -> str:
+        """Calculate SHA-256 hash of a file and return hex string."""
+        import hashlib
+        with open(file_path, "rb") as f:
+            file_bytes = f.read()
+            self.file_sizes[file_path] = len(file_bytes)
+            return hashlib.sha256(file_bytes).hexdigest()
     
     def validate_analysis(self, analysis: str) -> None:
         """Validate that analysis contains required sections."""
@@ -65,20 +77,33 @@ class PodcastAnalyzer:
     
     def analyze_audio(self, audio_path: str) -> str:
         """Analyze a podcast episode and return detailed analysis."""
+        logger.info(f"Starting analysis for: {audio_path}")
+        start_time = time.time()
+        
         try:
-            logger.info(f"Starting analysis for: {audio_path}")
-            audio_data = Path(audio_path).read_bytes()
+            # Calculate file hash and size
+            file_hash = self._get_file_hash(audio_path)
+            logger.info(f"File hash: {file_hash}")
+            
+            # Check if we've seen this file before
+            if file_hash in self.file_cache:
+                logger.info("Using cached file from Gemini storage")
+                audio_file = self.file_cache[file_hash]
+            else:
+                # Check Gemini storage for matching file
+                for existing_file in genai.list_files():
+                    gemini_hash = existing_file.sha256_hash.decode() if isinstance(existing_file.sha256_hash, bytes) else existing_file.sha256_hash
+                    if gemini_hash == file_hash:
+                        self.file_cache[file_hash] = existing_file
+                        audio_file = existing_file
+                        logger.info("Using matching file in Gemini storage")
+                        break
+                else:
+                    logger.info("Uploading audio to Gemini...")
+                    audio_file = genai.upload_file(audio_path)
+                    self.file_cache[file_hash] = audio_file
             
             logger.info("Sending audio to Gemini for analysis...")
-            start_time = time.time()
-            
-            response = self.model.generate_content([
-                PODCAST_ANALYSIS_PROMPT,
-                {
-                    "mime_type": "audio/mp3",
-                    "data": audio_data
-                }
-            ])
             response = self.model.generate_content(
                 [PODCAST_ANALYSIS_PROMPT, audio_file],
                 safety_settings=self.SAFETY_SETTINGS
