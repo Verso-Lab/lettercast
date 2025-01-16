@@ -1,5 +1,6 @@
 import os
 import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
 from pathlib import Path
 import logging
 import time
@@ -20,6 +21,13 @@ class InvalidAnalysisError(AnalyzerError):
     pass
 
 class PodcastAnalyzer:
+    SAFETY_SETTINGS = {
+        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH
+    }
+    
     REQUIRED_SECTIONS = ['TLDR', 'BIG PICTURE', 'HIGHLIGHTS', 'QUOTED', 'WORTH YOUR TIME IF']
     
     def __init__(self, api_key):
@@ -71,6 +79,10 @@ class PodcastAnalyzer:
                     "data": audio_data
                 }
             ])
+            response = self.model.generate_content(
+                [PODCAST_ANALYSIS_PROMPT, audio_file],
+                safety_settings=self.SAFETY_SETTINGS
+            )
             
             analysis = response.text
             self.validate_analysis(analysis)
