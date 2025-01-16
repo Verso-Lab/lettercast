@@ -52,19 +52,13 @@ class PodcastAnalyzer:
             model_name="gemini-2.0-flash-exp",
             generation_config=generation_config,
         )
-        
-        # Cache of file hashes and sizes to avoid re-uploading
-        self.file_cache = {}
-        self.file_sizes = {}
         logger.info("Gemini model initialized")
     
     def _get_file_hash(self, file_path: str) -> str:
         """Calculate SHA-256 hash of a file and return hex string."""
         import hashlib
         with open(file_path, "rb") as f:
-            file_bytes = f.read()
-            self.file_sizes[file_path] = len(file_bytes)
-            return hashlib.sha256(file_bytes).hexdigest()
+            return hashlib.sha256(f.read()).hexdigest()
     
     def validate_analysis(self, analysis: str) -> None:
         """Validate that analysis contains required sections."""
@@ -80,27 +74,19 @@ class PodcastAnalyzer:
         start_time = time.time()
         
         try:
-            # Calculate file hash and size
+            # Calculate file hash
             file_hash = self._get_file_hash(audio_path)
-            logger.info(f"File hash: {file_hash}")
             
-            # Check if we've seen this file before
-            if file_hash in self.file_cache:
-                logger.info("Using cached file from Gemini storage")
-                audio_file = self.file_cache[file_hash]
+            # Check Gemini storage for matching file
+            for existing_file in genai.list_files():
+                gemini_hash = existing_file.sha256_hash.decode() if isinstance(existing_file.sha256_hash, bytes) else existing_file.sha256_hash
+                if gemini_hash == file_hash:
+                    logger.info("Found matching file in Gemini storage")
+                    audio_file = existing_file
+                    break
             else:
-                # Check Gemini storage for matching file
-                for existing_file in genai.list_files():
-                    gemini_hash = existing_file.sha256_hash.decode() if isinstance(existing_file.sha256_hash, bytes) else existing_file.sha256_hash
-                    if gemini_hash == file_hash:
-                        self.file_cache[file_hash] = existing_file
-                        audio_file = existing_file
-                        logger.info("Using matching file in Gemini storage")
-                        break
-                else:
-                    logger.info("Uploading audio to Gemini...")
-                    audio_file = genai.upload_file(audio_path)
-                    self.file_cache[file_hash] = audio_file
+                logger.info("Uploading audio to Gemini...")
+                audio_file = genai.upload_file(audio_path)
             
             # Step 1: Get initial insights
             logger.info("Step 1: Getting initial insights from audio...")
@@ -151,28 +137,19 @@ class PodcastAnalyzer:
     
     def save_newsletter(self, newsletter_text: str, output_path: Optional[str] = None) -> str:
         """Save newsletter to a file."""
+        output_path = output_path or f"newsletters/lettercast_{datetime.now().strftime('%Y%m%d')}.md"
+        
         try:
-            if not output_path:
-                output_path = f"newsletters/lettercast_{datetime.now().strftime('%Y%m%d')}.md"
-            
             logger.info(f"Saving newsletter to: {output_path}")
             with open(output_path, 'w') as f:
                 f.write(newsletter_text)
-            
             return output_path
-        
         except Exception as e:
             logger.error(f"Error saving newsletter: {str(e)}", exc_info=True)
             raise AnalyzerError(f"Failed to save newsletter: {str(e)}")
     
     def process_podcast(self, audio_path: str, title: Optional[str] = None, output_path: Optional[str] = None) -> str:
         """Process a podcast from audio to saved newsletter."""
-        try:
-            analysis = self.analyze_audio(audio_path)
-            newsletter = self.format_newsletter(analysis, title)
-            return self.save_newsletter(newsletter, output_path)
-        except AnalyzerError:
-            raise
-        except Exception as e:
-            logger.error(f"Error processing podcast: {str(e)}", exc_info=True)
-            raise AnalyzerError(f"Failed to process podcast: {str(e)}") from None
+        analysis = self.analyze_audio(audio_path)
+        newsletter = self.format_newsletter(analysis, title)
+        return self.save_newsletter(newsletter, output_path)
