@@ -1,12 +1,11 @@
-import os
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 from pathlib import Path
 import logging
 import time
 from datetime import datetime
-from typing import Optional
-from .prompts import PODCAST_ANALYSIS_PROMPT
+from typing import Optional, Tuple
+from .prompts import PODCAST_ANALYSIS_STEP1_PROMPT, PODCAST_ANALYSIS_STEP2_PROMPT
 from utils.logging_config import setup_logging
 
 logger = logging.getLogger(__name__)
@@ -103,15 +102,21 @@ class PodcastAnalyzer:
                     audio_file = genai.upload_file(audio_path)
                     self.file_cache[file_hash] = audio_file
             
-            logger.info("Sending audio to Gemini for analysis...")
-            response = self.model.generate_content(
-                [PODCAST_ANALYSIS_PROMPT, audio_file],
+            # Step 1: Get initial insights
+            logger.info("Step 1: Getting initial insights from audio...")
+            insights = self.model.generate_content(
+                [PODCAST_ANALYSIS_STEP1_PROMPT, audio_file],
                 safety_settings=self.SAFETY_SETTINGS
-            )
+            ).text
             
-            analysis = response.text
+            # Step 2: Generate newsletter
+            logger.info("Step 2: Generating newsletter from insights and audio...")
+            analysis = self.model.generate_content(
+                [PODCAST_ANALYSIS_STEP2_PROMPT, insights, audio_file],
+                safety_settings=self.SAFETY_SETTINGS
+            ).text
+            
             self.validate_analysis(analysis)
-            
             logger.info(f"Analysis completed in {time.time() - start_time:.1f} seconds")
             return analysis
                 
