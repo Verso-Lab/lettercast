@@ -20,8 +20,7 @@ class InvalidAnalysisError(AnalyzerError):
     pass
 
 class PodcastAnalyzer:
-    # Required sections in analysis output
-    REQUIRED_SECTIONS = ['TLDR:', 'WHY NOW:', 'KEY POINTS:', 'QUOTED:', 'TAKEAWAYS:', 'KEY MOMENTS:', 'CRITICAL EVALUATION:', 'BIGGER PICTURE:', 'WORTH YOUR TIME IF:', 'SKIP IF:']
+    REQUIRED_SECTIONS = ['TLDR', 'BIG PICTURE', 'HIGHLIGHTS', 'QUOTED', 'WORTH YOUR TIME IF']
     
     def __init__(self, api_key):
         """Initialize the analyzer with a Gemini API key"""
