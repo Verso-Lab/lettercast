@@ -1,5 +1,5 @@
 from .analyzer import PodcastAnalyzer, AnalyzerError, InvalidAnalysisError
-from .audio import transform_audio
+from .audio_transformer import transform_audio
 from .downloader import download_audio
 from .prompts import PODCAST_ANALYSIS_PROMPT
 

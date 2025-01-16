@@ -2,7 +2,7 @@ import pytest
 import os
 from unittest.mock import Mock, patch
 from src.core import PodcastAnalyzer
-from src.core.audio import transform_audio
+from core.audio_transformer import transform_audio
 
 @pytest.fixture
 def mock_genai():
@@ -29,7 +29,7 @@ QUOTED: "Test quote" —Speaker
 
 @pytest.fixture
 def mock_audio_segment():
-    with patch('src.core.audio.AudioSegment') as mock:
+    with patch('src.core.audio_transformer.AudioSegment') as mock:
         mock_audio = Mock()
         mock_audio.channels = 2
         mock_audio.frame_rate = 44100

@@ -1,12 +1,12 @@
 import pytest
 from unittest.mock import Mock, patch
 import os
-from src.core.audio import transform_audio
+from core.audio_transformer import transform_audio
 from pydub import AudioSegment
 
 @pytest.fixture
 def mock_audio_segment():
-    with patch('src.core.audio.AudioSegment') as mock:
+    with patch('src.core.audio_transformer.AudioSegment') as mock:
         mock_audio = Mock()
         mock_audio.channels = 2
         mock_audio.frame_rate = 44100
@@ -18,7 +18,7 @@ def mock_audio_segment():
 
 @pytest.fixture
 def mock_tempfile():
-    with patch('src.core.audio.tempfile.NamedTemporaryFile') as mock:
+    with patch('src.core.audio_transformer.tempfile.NamedTemporaryFile') as mock:
         mock_file = Mock()
         mock_file.name = '/tmp/test_output.mp3'
         mock_context = Mock()
