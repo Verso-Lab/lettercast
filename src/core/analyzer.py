@@ -90,11 +90,11 @@ class PodcastAnalyzer:
             logger.info(f"Analysis completed in {time.time() - start_time:.1f} seconds")
             return analysis
                 
-        except InvalidAnalysisError:
-            raise
         except Exception as e:
-            logger.error(f"Error in analysis: {str(e)}", exc_info=True)
-            raise AnalyzerError(f"Analysis failed: {str(e)}")
+            if not isinstance(e, AnalyzerError):
+                logger.error(f"Analysis failed: {str(e)}", exc_info=True)
+                raise AnalyzerError(f"Analysis failed: {str(e)}") from None
+            raise
     
     def format_newsletter(self, analysis: str, title: Optional[str] = None) -> str:
         """Format analysis into a newsletter."""
@@ -136,29 +136,13 @@ class PodcastAnalyzer:
             raise AnalyzerError(f"Failed to save newsletter: {str(e)}")
     
     def process_podcast(self, audio_path: str, title: Optional[str] = None, output_path: Optional[str] = None) -> str:
-        """Process a podcast from audio to saved newsletter.
-        
-        Args:
-            audio_path: Path to the audio file
-            title: Optional podcast title
-            output_path: Optional path to save newsletter
-            
-        Returns:
-            str: Path to saved newsletter file
-            
-        Raises:
-            AnalyzerError: If any step fails
-        """
+        """Process a podcast from audio to saved newsletter."""
         try:
-            # Analyze audio
             analysis = self.analyze_audio(audio_path)
-            
-            # Format newsletter
             newsletter = self.format_newsletter(analysis, title)
-            
-            # Save and return path
             return self.save_newsletter(newsletter, output_path)
-            
+        except AnalyzerError:
+            raise
         except Exception as e:
             logger.error(f"Error processing podcast: {str(e)}", exc_info=True)
-            raise AnalyzerError(f"Failed to process podcast: {str(e)}") 
+            raise AnalyzerError(f"Failed to process podcast: {str(e)}") from None
