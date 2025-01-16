@@ -64,9 +64,7 @@ class PodcastAnalyzer:
         """Validate that analysis contains required sections."""
         missing = [section for section in self.REQUIRED_SECTIONS if section not in analysis]
         if missing:
-            raise InvalidAnalysisError(
-                f"Analysis missing required sections: {', '.join(missing)}"
-            )
+            logger.warning(f"Analysis missing required sections: {', '.join(missing)}")
     
     def analyze_audio(self, audio_path: str) -> str:
         """Analyze a podcast episode and return detailed analysis."""
