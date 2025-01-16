@@ -114,7 +114,6 @@ class PodcastAnalyzer:
         """Format analysis into a newsletter."""
         try:
             logger.info("Formatting newsletter...")
-            self.validate_analysis(analysis)
             
             today = datetime.now().strftime("%B %d, %Y")
             newsletter = f"# Lettercast\n#### {today}\n\n"
