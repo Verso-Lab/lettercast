@@ -5,7 +5,7 @@ import logging
 import time
 from datetime import datetime
 from typing import Optional, Tuple
-from .prompts import PODCAST_ANALYSIS_STEP1_PROMPT, PODCAST_ANALYSIS_STEP2_PROMPT
+from .prompts import PREANALYSIS_PROMPT, NEWSLETTER_PROMPT
 from utils.logging_config import setup_logging
 
 logger = logging.getLogger(__name__)
@@ -89,14 +89,14 @@ class PodcastAnalyzer:
             # Step 1: Get initial insights
             logger.info("Step 1: Getting initial insights from audio...")
             insights = self.model.generate_content(
-                [PODCAST_ANALYSIS_STEP1_PROMPT, audio_file],
+                [PREANALYSIS_PROMPT, audio_file],
                 safety_settings=self.SAFETY_SETTINGS
             ).text
             
             # Step 2: Generate newsletter
             logger.info("Step 2: Generating newsletter from insights and audio...")
             analysis = self.model.generate_content(
-                [PODCAST_ANALYSIS_STEP2_PROMPT, insights, audio_file],
+                [NEWSLETTER_PROMPT, insights, audio_file],
                 safety_settings=self.SAFETY_SETTINGS
             ).text
             

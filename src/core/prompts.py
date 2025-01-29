@@ -1,6 +1,6 @@
 """Prompts used for generating content with the Gemini API."""
 
-PODCAST_ANALYSIS_STEP1_PROMPT = """
+PREANALYSIS_PROMPT = """
 You are a podcast analysis assistant. I have provided you with a podcast episode. First, I need you to collect and organize key insights that we'll use to create a newsletter.
 
 Please analyze the material and provide the following critical insights, and return only the <INSIGHTS> section:
@@ -40,7 +40,7 @@ Please analyze the material and provide the following critical insights, and ret
 Please organize your response under these headings and provide clear, detailed insights that we can use to craft the newsletter.
 """
 
-PODCAST_ANALYSIS_STEP2_PROMPT = """
+NEWSLETTER_PROMPT = """
 Using the insights provided from our first analysis, craft a compelling newsletter that will engage and inform our readers.
 
 **Tone**:
@@ -69,7 +69,7 @@ Format your newsletter exactly as follows:
 "Insert the most memorable or revealing line here" —Speaker and brief speaker description [Quote a podcast guest, not the host, if there is one. Be careful not to quote a line from a clip played during the episode. Make sure the quote stands alone and makes sense in the context of the newsletter, to a reader who hasn't heard it. Quotes can be multiple sentences if needed.]
 
 **WORTH YOUR TIME IF**  
-You... [List types of listeners who would find this episode relevant or entertaining, e.g., “You're looking for a challenging conversation about foreign policy,” etc. Make non-obvious connections (e.g., a conversation about AI will always interest a tech nerd; that's not interesting), and make sure your suggestion is specific to the _episode,_ not the podcast series as a whole.]
+You... [List types of listeners who would find this episode relevant or entertaining, e.g., "You're looking for a challenging conversation about foreign policy," etc. Make non-obvious connections (e.g., a conversation about AI will always interest a tech nerd; that's not interesting), and make sure your suggestion is specific to the _episode,_ not the podcast series as a whole.]
 
 </NEWSLETTER>
 
