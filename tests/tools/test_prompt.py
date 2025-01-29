@@ -75,7 +75,7 @@ def main():
         # Analyze and save
         result_path = analyzer.process_podcast(
             transformed_audio,
-            title=title,
+            episode_name=title,
             output_path=output_path
         )
         

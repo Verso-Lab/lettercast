@@ -59,7 +59,7 @@ def test_full_pipeline(mock_genai, mock_audio_segment, temp_audio_file, tmp_path
         # Analyze audio and create newsletter
         saved_path = analyzer.process_podcast(
             transformed_audio,
-            title=os.path.basename(temp_audio_file),
+            episode_name=os.path.basename(temp_audio_file),
             output_path=str(tmp_path / "test_newsletter.md")
         )
         

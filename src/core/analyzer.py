@@ -114,7 +114,7 @@ class PodcastAnalyzer:
                 raise AnalyzerError(f"Analysis failed: {str(e)}") from None
             raise
     
-    def format_newsletter(self, analysis: str, title: Optional[str] = None) -> str:
+    def format_newsletter(self, analysis: str, podcast_name: Optional[str] = None, episode_name: Optional[str] = None) -> str:
         """Format analysis into a newsletter."""
         try:
             logger.info("Formatting newsletter...")
@@ -149,8 +149,15 @@ class PodcastAnalyzer:
             logger.error(f"Error saving newsletter: {str(e)}", exc_info=True)
             raise AnalyzerError(f"Failed to save newsletter: {str(e)}")
     
-    def process_podcast(self, audio_path: str, title: Optional[str] = None, output_path: Optional[str] = None) -> str:
+    def process_podcast(
+        self,
+        audio_path: str,
+        podcast_name: str,
+        podcast_description: str,
+        episode_name: Optional[str] = None,
+        output_path: Optional[str] = None
+    ) -> str:
         """Process a podcast from audio to saved newsletter."""
-        analysis = self.analyze_audio(audio_path)
-        newsletter = self.format_newsletter(analysis, title)
+        analysis = self.analyze_audio(audio_path, podcast_name, podcast_description)
+        newsletter = self.format_newsletter(analysis, podcast_name, episode_name)
         return self.save_newsletter(newsletter, output_path)
