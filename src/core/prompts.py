@@ -23,9 +23,11 @@ PODCAST_DESCRIPTIONS = {
 }
 
 PREANALYSIS_PROMPT = """
-You are a podcast analysis assistant. I have provided you with a podcast episode. First, I need you to collect and organize key insights that we'll use to create a newsletter.
+You are a podcast analysis assistant. I have provided you with an episode of {podcast_name}.
 
-Please analyze the material and provide the following critical insights, and return only the <INSIGHTS> section:
+Podcast description: {podcast_description}
+
+First, I need you to collect and organize key insights that we'll use to create a newsletter. Keep the description in mind as you analyze the material and provide the following critical insights. Return only the <INSIGHTS> section:
 
 <INSIGHTS>
 
