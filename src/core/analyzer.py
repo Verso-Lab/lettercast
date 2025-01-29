@@ -120,10 +120,15 @@ class PodcastAnalyzer:
             logger.info("Formatting newsletter...")
             
             today = datetime.now().strftime("%B %d, %Y")
-            newsletter = f"# Lettercast\n#### {today}\n\n"
+            newsletter = f"{today}\n"
             
-            if title:
-                newsletter += f"## {title}\n\n"
+            if episode_name:
+                newsletter += f"## {episode_name}\n\n"
+            else:
+                newsletter += f"## Lettercast\n\n"
+            
+            if podcast_name:
+                newsletter += f"### {podcast_name}\n\n"
             
             newsletter += analysis
             
