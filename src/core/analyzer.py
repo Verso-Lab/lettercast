@@ -5,7 +5,7 @@ import logging
 import time
 from datetime import datetime
 from typing import Optional, Tuple
-from .prompts import PREANALYSIS_PROMPT, NEWSLETTER_PROMPT
+from .prompts import PREANALYSIS_PROMPT, NEWSLETTER_PROMPT, PODCAST_DESCRIPTIONS
 from utils.logging_config import setup_logging
 
 logger = logging.getLogger(__name__)
@@ -92,6 +92,8 @@ class PodcastAnalyzer:
                 podcast_name=podcast_name,
                 podcast_description=podcast_description
             )
+            logger.info(f"Using podcast description for analysis: {podcast_description[:100]}..." if podcast_description else "No podcast description provided")
+            
             insights = self.model.generate_content(
                 [formatted_prompt, audio_file],
                 safety_settings=self.SAFETY_SETTINGS
@@ -158,11 +160,17 @@ class PodcastAnalyzer:
         self,
         audio_path: str,
         podcast_name: str,
-        podcast_description: str,
+        podcast_description: Optional[str] = None,
         episode_name: Optional[str] = None,
         output_path: Optional[str] = None
     ) -> str:
         """Process a podcast from audio to saved newsletter."""
+        # If no description provided, try to get it from PODCAST_DESCRIPTIONS
+        if podcast_description is None:
+            podcast_description = PODCAST_DESCRIPTIONS.get(podcast_name, "")
+            if not podcast_description:
+                logger.warning(f"No description found for podcast: {podcast_name}")
+        
         analysis = self.analyze_audio(audio_path, podcast_name, podcast_description)
         newsletter = self.format_newsletter(analysis, podcast_name, episode_name)
         return self.save_newsletter(newsletter, output_path)

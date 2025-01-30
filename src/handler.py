@@ -74,8 +74,10 @@ def process_episode(podcast: Podcast, episode: Dict, api_key: str) -> Dict:
         result_path = f"newsletters/{podcast.id}/{episode['id']}_{episode['episode_name']}.md"
         
         analyzer.process_podcast(
-            transformed_audio,
-            title=episode['episode_name'],
+            audio_path=transformed_audio,
+            podcast_name=podcast.podcast_name,
+            podcast_description=podcast.description,
+            episode_name=episode['episode_name'],
             output_path=result_path
         )
         
