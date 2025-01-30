@@ -105,14 +105,33 @@ def get_recent_episodes(podcast: Podcast, limit: int = 5) -> Dict:
                 else:
                     publish_date = datetime.now(pytz.UTC)
                 
+                # Extract audio URL from enclosure
+                audio_url = None
+                enclosure = item.find('enclosure')
+                if enclosure is not None:
+                    audio_url = enclosure.get('url')
+                    mime_type = enclosure.get('type', '')
+                    if not audio_url or not mime_type.startswith('audio/'):
+                        # Try finding another enclosure with audio type
+                        for enc in item.findall('enclosure'):
+                            if enc.get('type', '').startswith('audio/'):
+                                audio_url = enc.get('url')
+                                break
+                
+                if not audio_url:
+                    logger.warning(f"No audio URL found for episode: {item.findtext('title', '')}")
+                    continue
+                
                 episode = {
                     "id": str(uuid.uuid4()),
                     "podcast_id": podcast.id,
+                    "podcast_name": podcast.podcast_name,
                     "rss_guid": rss_guid,
                     "episode_name": item.findtext('title', '').strip(),
                     "publish_date": publish_date.isoformat(),
                     "summary": "",  # To be generated later
-                    "created_at": datetime.now(pytz.UTC).isoformat()
+                    "created_at": datetime.now(pytz.UTC).isoformat(),
+                    "url": audio_url
                 }
                 
                 episodes.append(episode)
@@ -140,14 +159,14 @@ if __name__ == "__main__":
     
     for index, row in podcasts_df.iterrows():
         podcast = Podcast(
-            id=row['id'] or str(uuid.uuid4()),
+            id=row['id'] if pd.notna(row['id']) else str(uuid.uuid4()),
             podcast_name=row['name'],
             rss_url=row['rss_url'],
             publisher=row['publisher'],
             description=row['description'],
             image_url=row['image_url'],
             frequency=row['frequency'],
-            tags=row['tags']
+            tags=row['tags'],
         )
         
         # Get recent episodes
