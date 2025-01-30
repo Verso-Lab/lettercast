@@ -10,7 +10,7 @@ import pytz
 logger = logging.getLogger(__name__)
 
 @dataclass
-class PodcastRow:
+class Podcast:
     id: str
     name: str
     rss_url: str
@@ -52,7 +52,7 @@ def parse_datetime(date_str: str) -> datetime:
         logger.warning(f"Failed to parse date {date_str}: {e}")
         return datetime.now(pytz.UTC)
 
-def get_recent_episodes(podcast: PodcastRow, limit: int = 5) -> Dict:
+def get_recent_episodes(podcast: Podcast, limit: int = 5) -> Dict:
     """
     Fetch and parse the RSS feed for a podcast, returning the most recent episodes.
     
@@ -140,8 +140,8 @@ if __name__ == "__main__":
     # Read podcasts CSV
     podcasts_df = pd.read_csv('podcasts.csv')
     
-    # Convert first row to PodcastRow
-    first_podcast = PodcastRow(
+    # Convert first row to Podcast
+    first_podcast = Podcast(
         id=podcasts_df.iloc[0]['id'] or str(uuid.uuid4()),
         name=podcasts_df.iloc[0]['name'],
         rss_url=podcasts_df.iloc[0]['rss_url'],
