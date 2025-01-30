@@ -41,12 +41,12 @@ def download_audio(url, chunk_size=8192):
             raise ValueError(f"Invalid URL: {url}")
         
         # Check file size before downloading
-        response = requests.head(url)
+        response = requests.head(url, allow_redirects=True)
         total_size = int(response.headers.get('content-length', 0))
         
         # If HEAD request doesn't return size, try GET with stream
         if total_size == 0:
-            response = requests.get(url, stream=True)
+            response = requests.get(url, stream=True, allow_redirects=True)
             total_size = int(response.headers.get('content-length', 0))
         
         size_mb = total_size / (1024 * 1024)
@@ -69,7 +69,7 @@ def download_audio(url, chunk_size=8192):
         
         # If we already have a GET response, use it; otherwise make the request
         if response.request.method != 'GET':
-            response = requests.get(url, stream=True)
+            response = requests.get(url, stream=True, allow_redirects=True)
         
         # Stream download
         response.raise_for_status()
