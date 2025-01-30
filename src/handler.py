@@ -115,33 +115,53 @@ def lambda_handler(event, context=None):
         if not api_key:
             raise ValueError("GEMINI_API_KEY not found in environment variables or .env file")
         
-        # Load all podcasts
-        logger.info("Loading podcasts from CSV...")
-        podcasts = load_podcasts()
-        
-        # Process each podcast's latest episode
-        for podcast in podcasts:
-            try:
-                logger.info(f"Checking for new episodes: {podcast.podcast_name}")
-                episodes = get_recent_episodes(podcast)
-                
-                if episodes['episodes']:
-                    latest_episode = episodes['episodes'][0]
-                    # TODO: Add check for new episode here
-                    # For now, always process the latest episode
-                    result = process_episode(podcast, latest_episode, api_key)
-                    results.append(result)
-                else:
-                    logger.warning(f"No episodes found for podcast: {podcast.podcast_name}")
+        # Handle single podcast case (from CLI)
+        if isinstance(event, dict) and event.get('single_podcast'):
+            podcast = event['podcast']
+            logger.info(f"Processing single podcast: {podcast.podcast_name}")
             
-            except Exception as e:
-                logger.error(f"Error processing podcast {podcast.podcast_name}: {str(e)}")
+            episodes = get_recent_episodes(podcast)
+            if episodes['episodes']:
+                latest_episode = episodes['episodes'][0]
+                result = process_episode(podcast, latest_episode, api_key)
+                results.append(result)
+            else:
+                logger.warning(f"No episodes found for podcast: {podcast.podcast_name}")
                 results.append({
                     'status': 'error',
                     'podcast_id': podcast.id,
-                    'error': str(e)
+                    'error': 'No episodes found'
                 })
-                continue
+        
+        # Handle batch processing case (from Lambda)
+        else:
+            # Load all podcasts
+            logger.info("Loading podcasts from CSV...")
+            podcasts = load_podcasts()
+            
+            # Process each podcast's latest episode
+            for podcast in podcasts:
+                try:
+                    logger.info(f"Checking for new episodes: {podcast.podcast_name}")
+                    episodes = get_recent_episodes(podcast)
+                    
+                    if episodes['episodes']:
+                        latest_episode = episodes['episodes'][0]
+                        # TODO: Add check for new episode here
+                        # For now, always process the latest episode
+                        result = process_episode(podcast, latest_episode, api_key)
+                        results.append(result)
+                    else:
+                        logger.warning(f"No episodes found for podcast: {podcast.podcast_name}")
+                
+                except Exception as e:
+                    logger.error(f"Error processing podcast {podcast.podcast_name}: {str(e)}")
+                    results.append({
+                        'status': 'error',
+                        'podcast_id': podcast.id,
+                        'error': str(e)
+                    })
+                    continue
         
         if context is None:
             # Running locally

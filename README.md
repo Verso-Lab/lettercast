@@ -29,10 +29,6 @@ Process podcasts using the main CLI interface:
 ```bash
 poetry run python src/cli.py
 ```
-When prompted, you can:
-- Enter a podcast URL to analyze
-- Press Enter without a URL to use a default test podcast
-
 The script will generate a newsletter summary in the `newsletters/` directory.
 
 ### Local audio testing
@@ -54,7 +50,8 @@ lettercast/
 │   │   ├── analyzer.py          # Main analysis logic
 │   │   ├── audio_transformer.py # Audio processing
 │   │   ├── downloader.py        # Podcast downloading
-│   │   └── prompts.py           # Analysis prompts
+│   │   ├── prompts.py           # Analysis prompts
+│   │   └── scraper.py           # Podcast scraping
 │   ├── utils/
 │   │   └── logging_config.py    # Structured logging
 │   ├── cli.py                   # CLI entry point
