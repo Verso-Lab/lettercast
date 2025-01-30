@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Podcast:
     id: str
-    name: str
+    podcast_name: str
     rss_url: str
     publisher: Optional[str] = None
     description: Optional[str] = None
@@ -64,7 +64,7 @@ def get_recent_episodes(podcast: Podcast, limit: int = 5) -> Dict:
         Dict containing list of episode objects
     """
     try:
-        logger.info(f"Fetching RSS feed for {podcast.name} from {podcast.rss_url}")
+        logger.info(f"Fetching RSS feed for {podcast.podcast_name} from {podcast.rss_url}")
         
         # Fetch RSS feed
         response = requests.get(podcast.rss_url, timeout=30)
@@ -109,7 +109,7 @@ def get_recent_episodes(podcast: Podcast, limit: int = 5) -> Dict:
                     "id": str(uuid.uuid4()),
                     "podcast_id": podcast.id,
                     "rss_guid": rss_guid,
-                    "title": item.findtext('title', '').strip(),
+                    "episode_name": item.findtext('title', '').strip(),
                     "publish_date": publish_date.isoformat(),
                     "summary": "",  # To be generated later
                     "created_at": datetime.now(pytz.UTC).isoformat()
@@ -134,24 +134,23 @@ def get_recent_episodes(podcast: Podcast, limit: int = 5) -> Dict:
         raise
 
 if __name__ == "__main__":
-    # Example usage
     import pandas as pd
     
-    # Read podcasts CSV
     podcasts_df = pd.read_csv('podcasts.csv')
     
-    # Convert first row to Podcast
-    first_podcast = Podcast(
-        id=podcasts_df.iloc[0]['id'] or str(uuid.uuid4()),
-        name=podcasts_df.iloc[0]['name'],
-        rss_url=podcasts_df.iloc[0]['rss_url'],
-        publisher=podcasts_df.iloc[0]['publisher'],
-        description=podcasts_df.iloc[0]['description'],
-        image_url=podcasts_df.iloc[0]['image_url']
-    )
-    
-    # Get recent episodes
-    result = get_recent_episodes(first_podcast)
-    print(f"Found {len(result['episodes'])} recent episodes") 
-    for episode in result['episodes']:
-        print(episode)
+    for index, row in podcasts_df.iterrows():
+        podcast = Podcast(
+            id=row['id'] or str(uuid.uuid4()),
+            podcast_name=row['name'],
+            rss_url=row['rss_url'],
+            publisher=row['publisher'],
+            description=row['description'],
+            image_url=row['image_url'],
+            frequency=row['frequency'],
+            tags=row['tags']
+        )
+        
+        # Get recent episodes
+        result = get_recent_episodes(podcast)
+        print(f"Found {len(result['episodes'])} recent episodes") 
+        print(result['episodes'][0])
