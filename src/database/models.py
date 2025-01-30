@@ -1,4 +1,5 @@
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text, JSON, MetaData
+from sqlalchemy import Column, String, DateTime, ForeignKey, Text, JSON, MetaData, text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
 import pytz
@@ -17,35 +18,30 @@ Base = declarative_base(metadata=metadata)
 
 class Podcast(Base):
     __tablename__ = "podcasts"
-    __table_args__ = {'extend_existing': True}  # Allow reflection of existing table
+    __table_args__ = {'extend_existing': True}
 
-    id = Column(String, primary_key=True)
-    podcast_name = Column(String)
-    rss_url = Column(String)
-    publisher = Column(String)
+    id = Column(UUID, primary_key=True, server_default=text('gen_random_uuid()'))
+    name = Column(Text, nullable=False)
+    publisher = Column(Text)
     description = Column(Text)
-    image_url = Column(String)
-    frequency = Column(String)
+    rss_url = Column(Text, nullable=False)
+    image_url = Column(Text)
+    created_at = Column(DateTime(timezone=True), server_default=text('CURRENT_TIMESTAMP'))
+    frequency = Column(Text)
     tags = Column(JSON)
-    created_at = Column(DateTime(timezone=True))
-    updated_at = Column(DateTime(timezone=True))
 
     episodes = relationship("Episode", back_populates="podcast")
 
 class Episode(Base):
     __tablename__ = "episodes"
-    __table_args__ = {'extend_existing': True}  # Allow reflection of existing table
+    __table_args__ = {'extend_existing': True}
 
-    id = Column(String, primary_key=True)
-    podcast_id = Column(String, ForeignKey("podcasts.id"))
-    rss_guid = Column(String)
-    episode_name = Column(String)
-    publish_date = Column(DateTime(timezone=True))
-    url = Column(String)
+    id = Column(UUID, primary_key=True, server_default=text('gen_random_uuid()'))
+    podcast_id = Column(UUID, ForeignKey("podcasts.id"), nullable=False)
+    rss_guid = Column(Text, nullable=False)
+    title = Column(Text, nullable=False)
+    publish_date = Column(DateTime(timezone=True), nullable=False)
     summary = Column(Text)
-    created_at = Column(DateTime(timezone=True))
-    updated_at = Column(DateTime(timezone=True))
-    processed_at = Column(DateTime(timezone=True))
-    newsletter_path = Column(String)
+    created_at = Column(DateTime(timezone=True), server_default=text('CURRENT_TIMESTAMP'))
 
     podcast = relationship("Podcast", back_populates="episodes") 
