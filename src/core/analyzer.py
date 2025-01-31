@@ -66,7 +66,7 @@ class PodcastAnalyzer:
         if missing:
             logger.warning(f"Analysis missing required sections: {', '.join(missing)}")
     
-    def analyze_audio(self, audio_path: str, podcast_name: str, podcast_description: str) -> str:
+    def analyze_audio(self, audio_path: str, name: str, description: str) -> str:
         """Analyze a podcast episode and return detailed analysis."""
         logger.info(f"Starting analysis for: {audio_path}")
         start_time = time.time()
@@ -89,10 +89,10 @@ class PodcastAnalyzer:
             # Step 1: Get initial insights
             logger.info("Step 1: Getting initial insights from audio...")
             formatted_prompt = PREANALYSIS_PROMPT.format(
-                podcast_name=podcast_name,
-                podcast_description=podcast_description
+                name=name,
+                description=description
             )
-            logger.info(f"Using podcast description for analysis: {podcast_description[:100]}..." if podcast_description else "No podcast description provided")
+            logger.info(f"Using podcast description for analysis: {description[:100]}..." if description else "No podcast description provided")
             
             insights = self.model.generate_content(
                 [formatted_prompt, audio_file],
@@ -116,7 +116,7 @@ class PodcastAnalyzer:
                 raise AnalyzerError(f"Analysis failed: {str(e)}") from None
             raise
     
-    def format_newsletter(self, analysis: str, podcast_name: Optional[str] = None, episode_name: Optional[str] = None) -> str:
+    def format_newsletter(self, analysis: str, name: Optional[str] = None, title: Optional[str] = None) -> str:
         """Format analysis into a newsletter."""
         try:
             logger.info("Formatting newsletter...")
@@ -124,13 +124,13 @@ class PodcastAnalyzer:
             today = datetime.now().strftime("%B %d, %Y")
             newsletter = f"{today}\n"
             
-            if episode_name:
-                newsletter += f"## {episode_name}\n\n"
+            if title:
+                newsletter += f"## {title}\n\n"
             else:
                 newsletter += f"## Lettercast\n\n"
             
-            if podcast_name:
-                newsletter += f"### {podcast_name}\n\n"
+            if name:
+                newsletter += f"### {name}\n\n"
             
             newsletter += analysis
             
@@ -159,18 +159,18 @@ class PodcastAnalyzer:
     def process_podcast(
         self,
         audio_path: str,
-        podcast_name: str,
-        podcast_description: Optional[str] = None,
-        episode_name: Optional[str] = None,
+        name: str,
+        description: Optional[str] = None,
+        title: Optional[str] = None,
         output_path: Optional[str] = None
     ) -> str:
         """Process a podcast from audio to saved newsletter."""
         # If no description provided, try to get it from PODCAST_DESCRIPTIONS
-        if podcast_description is None:
-            podcast_description = PODCAST_DESCRIPTIONS.get(podcast_name, "")
-            if not podcast_description:
-                logger.warning(f"No description found for podcast: {podcast_name}")
+        if description is None:
+            description = PODCAST_DESCRIPTIONS.get(name, "")
+            if not description:
+                logger.warning(f"No description found for podcast: {name}")
         
-        analysis = self.analyze_audio(audio_path, podcast_name, podcast_description)
-        newsletter = self.format_newsletter(analysis, podcast_name, episode_name)
+        analysis = self.analyze_audio(audio_path, name, description)
+        newsletter = self.format_newsletter(analysis, name, title)
         return self.save_newsletter(newsletter, output_path)

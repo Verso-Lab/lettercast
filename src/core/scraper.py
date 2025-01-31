@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Podcast:
     id: str
-    podcast_name: str
+    name: str
     rss_url: str
     publisher: Optional[str] = None
     description: Optional[str] = None
@@ -64,7 +64,7 @@ def get_recent_episodes(podcast: Podcast, limit: int = 5) -> Dict:
         Dict containing list of episode objects
     """
     try:
-        logger.info(f"Fetching RSS feed for {podcast.podcast_name} from {podcast.rss_url}")
+        logger.info(f"Fetching RSS feed for {podcast.name} from {podcast.rss_url}")
         
         # Fetch RSS feed
         response = requests.get(podcast.rss_url, timeout=30)
@@ -125,9 +125,9 @@ def get_recent_episodes(podcast: Podcast, limit: int = 5) -> Dict:
                 episode = {
                     "id": str(uuid.uuid4()),
                     "podcast_id": podcast.id,
-                    "podcast_name": podcast.podcast_name,
+                    "podcast_name": podcast.name,
                     "rss_guid": rss_guid,
-                    "episode_name": item.findtext('title', '').strip(),
+                    "title": item.findtext('title', '').strip(),
                     "publish_date": publish_date.isoformat(),
                     "summary": "",  # To be generated later
                     "created_at": datetime.now(pytz.UTC).isoformat(),
@@ -160,7 +160,7 @@ if __name__ == "__main__":
     for index, row in podcasts_df.iterrows():
         podcast = Podcast(
             id=row['id'] if pd.notna(row['id']) else str(uuid.uuid4()),
-            podcast_name=row['name'],
+            name=row['name'],
             rss_url=row['rss_url'],
             publisher=row['publisher'],
             description=row['description'],
