@@ -27,7 +27,7 @@ class PodcastAnalyzer:
         HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH
     }
     
-    REQUIRED_SECTIONS = ['TLDR', 'BIG PICTURE', 'HIGHLIGHTS', 'QUOTED', 'WORTH YOUR TIME IF']
+    REQUIRED_SECTIONS = ['TLDR', 'Big picture', 'Highlights', 'Quoted', 'Worth your time if...']
     
     def __init__(self, api_key):
         """Initialize the analyzer with a Gemini API key"""
@@ -122,16 +122,7 @@ class PodcastAnalyzer:
             logger.info("Formatting newsletter...")
             
             today = datetime.now().strftime("%B %d, %Y")
-            newsletter = f"{today}\n"
-            
-            if title:
-                newsletter += f"## {title}\n\n"
-            else:
-                newsletter += f"## Lettercast\n\n"
-            
-            if name:
-                newsletter += f"### {name}\n\n"
-            
+            newsletter = f"{today} | {name}\n# {title}\n"
             newsletter += analysis
             
             logger.info("Newsletter formatting complete")
