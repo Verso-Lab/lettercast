@@ -108,7 +108,7 @@ async def process_episode(db: AsyncSession, podcast: Dict, episode: Dict, api_ke
             'podcast_id': podcast['id'],
             'rss_guid': episode['rss_guid'],
             'title': episode['title'],
-            'publish_date': episode['publish_date'],
+            'publish_date': datetime.fromisoformat(episode['publish_date']),
             'summary': newsletter
         }
         await crud.create_episode(db, episode_data)

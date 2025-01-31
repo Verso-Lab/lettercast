@@ -37,7 +37,7 @@ class Episode(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(UUID, primary_key=True, server_default=text('gen_random_uuid()'))
-    podcast_id = Column(UUID, ForeignKey("podcasts.id"), nullable=False, unique=True)
+    podcast_id = Column(UUID, ForeignKey("podcasts.id"), nullable=False)
     rss_guid = Column(Text, nullable=False, unique=True)
     title = Column(Text, nullable=False)
     publish_date = Column(DateTime(timezone=True), nullable=False)
