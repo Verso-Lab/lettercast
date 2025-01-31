@@ -167,16 +167,15 @@ async def process_and_store_podcast(rss_url: str) -> Tuple[bool, str]:
 
 async def main():
     """CLI entry point"""
-    import sys
+    import argparse
     
-    if len(sys.argv) != 2:
-        print("Usage: python -m src.tasks.process_podcast <rss_url>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description='Process and store a podcast from RSS feed')
+    parser.add_argument('rss_url', help='URL of the podcast RSS feed')
+    args = parser.parse_args()
     
-    rss_url = sys.argv[1]
-    success, message = await process_and_store_podcast(rss_url)
+    success, message = await process_and_store_podcast(args.rss_url)
     print(message)
-    sys.exit(0 if success else 1)
+    return 1 if not success else 0
 
 if __name__ == "__main__":
     asyncio.run(main()) 
