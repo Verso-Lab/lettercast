@@ -135,9 +135,7 @@ class PodcastProcessor:
         podcast_data = {
             **metadata,
             "rss_url": rss_url,
-            "frequency": frequency,
-            "created_at": datetime.now(pytz.UTC),
-            "updated_at": datetime.now(pytz.UTC)
+            "frequency": str(frequency),
         }
         
         return podcast_data
