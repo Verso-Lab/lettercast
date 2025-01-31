@@ -103,33 +103,13 @@ async def get_recent_episodes(
     result = await db.execute(query)
     return result.scalars().all()
 
-async def update_episode_processed(
-    db: AsyncSession, 
-    episode_id: str, 
-    newsletter_path: str
-) -> Optional[Episode]:
-    """Update episode after processing"""
-    now = datetime.now(pytz.UTC)
-    stmt = (
-        update(Episode)
-        .where(Episode.id == episode_id)
-        .values(
-            processed_at=now,
-            newsletter_path=newsletter_path,
-            updated_at=now
-        )
-        .returning(Episode)
-    )
-    result = await db.execute(stmt)
-    return result.scalar_one_or_none()
-
 async def get_unprocessed_episodes(
     db: AsyncSession,
     limit: int = 100,
     load_podcast: bool = False
 ) -> List[Episode]:
-    """Get unprocessed episodes with optional podcast data"""
-    query = select(Episode).where(Episode.processed_at.is_(None))
+    """Get episodes that haven't been processed yet (no created_at timestamp)"""
+    query = select(Episode).where(Episode.created_at.is_(None))
     if load_podcast:
         query = query.options(selectinload(Episode.podcast))
     query = query.order_by(Episode.publish_date.desc()).limit(limit)
