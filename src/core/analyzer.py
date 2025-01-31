@@ -1,11 +1,13 @@
-import google.generativeai as genai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
-from pathlib import Path
 import logging
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import Optional, Tuple
-from .prompts import PREANALYSIS_PROMPT, NEWSLETTER_PROMPT, PODCAST_DESCRIPTIONS
+
+import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
+
+from .prompts import PODCAST_DESCRIPTIONS, PREANALYSIS_PROMPT, NEWSLETTER_PROMPT
 from utils.logging_config import setup_logging
 
 logger = logging.getLogger(__name__)

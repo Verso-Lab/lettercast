@@ -1,16 +1,18 @@
-import os
 import json
 import logging
-import pytz
+import os
 from datetime import datetime
-from typing import List, Dict
+from typing import Dict, List
+
+import pytz
 from dotenv import load_dotenv
-from core import PodcastAnalyzer, transform_audio, download_audio
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from core import PodcastAnalyzer, download_audio, transform_audio
 from core.scraper import Podcast, get_recent_episodes
-from utils.logging_config import setup_logging
 from src.database import crud
 from src.database.config import AsyncSessionLocal
-from sqlalchemy.ext.asyncio import AsyncSession
+from utils.logging_config import setup_logging
 
 logger = logging.getLogger(__name__)
 

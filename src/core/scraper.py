@@ -1,11 +1,12 @@
-import requests
 import logging
-from datetime import datetime
-from lxml import etree
 import uuid
-from typing import Dict, List, Optional
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Dict, List, Optional
+
 import pytz
+import requests
+from lxml import etree
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +65,7 @@ def get_recent_episodes(podcast: Podcast, limit: int = 5) -> Dict:
         Dict containing list of episode objects
     """
     try:
-        logger.info(f"Fetching RSS feed for {podcast.name} from {podcast.rss_url}")
+        logger.info(f"Scraping RSS feed for {podcast.name} from {podcast.rss_url}")
         
         # Fetch RSS feed
         response = requests.get(podcast.rss_url, timeout=30)
