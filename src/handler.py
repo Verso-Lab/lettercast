@@ -113,14 +113,16 @@ async def process_episode(db: AsyncSession, podcast: Dict, episode: Dict, api_ke
         }
         await crud.create_episode(db, episode_data)
         await db.commit()
-            
-        return {
+
+        result = {
             'status': 'success',
             'podcast_id': podcast['id'],
             'episode_id': episode['id'],
             'title': episode['title'],
             'newsletter': newsletter
         }
+        logger.info(f"Episode {episode['title']} processed successfully")
+        return result
         
     except Exception as e:
         logger.error(f"Failed to process episode {episode['id']}: {str(e)}", exc_info=True)
@@ -137,8 +139,6 @@ async def process_episode(db: AsyncSession, podcast: Dict, episode: Dict, api_ke
 
 async def lambda_handler(event=None, context=None):
     """AWS Lambda handler for podcast processing. Runs every X minutes via EventBridge."""
-    results = []
-    
     try:
         # Get API key
         api_key = os.getenv('GEMINI_API_KEY')
@@ -154,6 +154,12 @@ async def lambda_handler(event=None, context=None):
             logger.info("Loading podcasts from database...")
             podcasts = await load_podcasts(db)
             
+            total_podcasts = len(podcasts)
+            total_new_episodes = 0
+            successful_processes = 0
+            failed_processes = 0
+            errors = []
+            
             # Process each podcast's new episodes
             for podcast_dict in podcasts:
                 try:
@@ -167,27 +173,49 @@ async def lambda_handler(event=None, context=None):
                     # Find which ones aren't in our database and are within time window
                     unprocessed = await find_unprocessed_episodes(db, podcast_dict, rss_episodes, minutes)
                     
+                    total_new_episodes += len(unprocessed)
+                    
                     if unprocessed:
                         for episode in unprocessed:
                             result = await process_episode(db, podcast_dict, episode, api_key)
-                            results.append(result)
+                            if result['status'] == 'success':
+                                successful_processes += 1
+                            else:
+                                failed_processes += 1
+                                errors.append({
+                                    'podcast': podcast_dict['name'],
+                                    'episode': episode['title'],
+                                    'error': result['error']
+                                })
                     else:
                         logger.info(f"No new episodes found for podcast: {podcast_dict['name']}")
                 
                 except Exception as e:
                     logger.error(f"Error processing podcast {podcast_dict['name']}: {str(e)}")
-                    results.append({
-                        'status': 'error',
-                        'podcast_id': podcast_dict['id'],
+                    failed_processes += 1
+                    errors.append({
+                        'podcast': podcast_dict['name'],
                         'error': str(e)
                     })
                     continue
         
+        summary = {
+            'time_window_minutes': minutes,
+            'total_podcasts_checked': total_podcasts,
+            'new_episodes_found': total_new_episodes,
+            'successfully_processed': successful_processes,
+            'failed_processes': failed_processes,
+            'run_timestamp': datetime.now(pytz.UTC).isoformat()
+        }
+        
+        if errors:
+            summary['errors'] = errors[:10]  # Limit to first 10 errors to keep response size reasonable
+            if len(errors) > 10:
+                summary['additional_errors_count'] = len(errors) - 10
+        
         return {
             'statusCode': 200,
-            'body': json.dumps({
-                'results': results
-            }, default=str)
+            'body': json.dumps(summary, default=str)
         }
             
     except Exception as e:
@@ -196,6 +224,7 @@ async def lambda_handler(event=None, context=None):
             'statusCode': 500,
             'body': json.dumps({
                 'error': str(e),
-                'partial_results': results
+                'time_window_minutes': minutes if 'minutes' in locals() else None,
+                'run_timestamp': datetime.now(pytz.UTC).isoformat()
             }, default=str)
         }

@@ -92,7 +92,7 @@ class PodcastAnalyzer:
                 podcast_name=podcast_name,
                 podcast_description=podcast_description
             )
-            logger.info(f"Using podcast description for analysis: {podcast_description[:100]}..." if podcast_description else "No podcast description provided")
+            logger.info(f"Using podcast description for analysis" if podcast_description else "No podcast description provided")
             
             insights = self.model.generate_content(
                 [formatted_prompt, audio_file],
@@ -153,7 +153,6 @@ class PodcastAnalyzer:
         name: str,
         description: Optional[str] = None,
         title: Optional[str] = None,
-        output_path: Optional[str] = None
     ) -> str:
         """Process a podcast from audio to newsletter text."""
         description = PODCAST_DESCRIPTIONS.get(name)
