@@ -125,7 +125,7 @@ def get_recent_episodes(podcast: Podcast, limit: int = 5) -> Dict:
                 episode = {
                     "id": str(uuid.uuid4()),
                     "podcast_id": podcast.id,
-                    "podcast_name": podcast.name,
+                    "name": podcast.name,
                     "rss_guid": rss_guid,
                     "title": item.findtext('title', '').strip(),
                     "publish_date": publish_date.isoformat(),

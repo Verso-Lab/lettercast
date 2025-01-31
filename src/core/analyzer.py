@@ -66,7 +66,7 @@ class PodcastAnalyzer:
         if missing:
             logger.warning(f"Analysis missing required sections: {', '.join(missing)}")
     
-    def analyze_audio(self, audio_path: str, name: str, description: str) -> str:
+    def analyze_audio(self, audio_path: str, podcast_name: str, podcast_description: str) -> str:
         """Analyze a podcast episode and return detailed analysis."""
         logger.info(f"Starting analysis for: {audio_path}")
         start_time = time.time()
@@ -89,10 +89,10 @@ class PodcastAnalyzer:
             # Step 1: Get initial insights
             logger.info("Step 1: Getting initial insights from audio...")
             formatted_prompt = PREANALYSIS_PROMPT.format(
-                name=name,
-                description=description
+                podcast_name=podcast_name,
+                podcast_description=podcast_description
             )
-            logger.info(f"Using podcast description for analysis: {description[:100]}..." if description else "No podcast description provided")
+            logger.info(f"Using podcast description for analysis: {podcast_description[:100]}..." if podcast_description else "No podcast description provided")
             
             insights = self.model.generate_content(
                 [formatted_prompt, audio_file],
@@ -164,13 +164,11 @@ class PodcastAnalyzer:
         title: Optional[str] = None,
         output_path: Optional[str] = None
     ) -> str:
-        """Process a podcast from audio to saved newsletter."""
-        # If no description provided, try to get it from PODCAST_DESCRIPTIONS
-        if description is None:
-            description = PODCAST_DESCRIPTIONS.get(name, "")
-            if not description:
-                logger.warning(f"No description found for podcast: {name}")
+        """Process a podcast from audio to newsletter text."""
+        description = PODCAST_DESCRIPTIONS.get(name)
+        if not description:
+            logger.warning(f"No description found for podcast: {name}")
+            description = ""
         
-        analysis = self.analyze_audio(audio_path, name, description)
-        newsletter = self.format_newsletter(analysis, name, title)
-        return self.save_newsletter(newsletter, output_path)
+        analysis = self.analyze_audio(audio_path, podcast_name=name, podcast_description=description)
+        return self.format_newsletter(analysis, name, title)

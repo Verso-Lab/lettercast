@@ -81,7 +81,6 @@ async def process_episode(db: AsyncSession, podcast: Dict, episode: Dict, api_ke
     """Process a single podcast episode"""
     downloaded_file = None
     transformed_audio = None
-    result_path = None
     
     try:
         # Download audio file
@@ -95,32 +94,22 @@ async def process_episode(db: AsyncSession, podcast: Dict, episode: Dict, api_ke
         # Initialize analyzer
         analyzer = PodcastAnalyzer(api_key)
         
-        # Create output directory structure
-        os.makedirs(f"newsletters/{podcast['id']}", exist_ok=True)
-        
         # Process podcast
         logger.info(f"Processing episode: {episode['title']}")
-        result_path = f"newsletters/{podcast['id']}/{episode['id']}_{episode['title']}.md"
-        
-        analyzer.process_podcast(
+        newsletter = analyzer.process_podcast(
             audio_path=transformed_audio,
             name=podcast['name'],
             description=podcast['description'],
-            title=episode['title'],
-            output_path=result_path
+            title=episode['title']
         )
         
-        # Read the generated newsletter
-        with open(result_path) as f:
-            newsletter = f.read()
-        
-        # Create episode in database (created_at will serve as processed_at)
+        # Create episode in database with newsletter as summary
         episode_data = {
             'podcast_id': podcast['id'],
             'rss_guid': episode['rss_guid'],
             'title': episode['title'],
             'publish_date': episode['publish_date'],
-            'summary': episode['summary']
+            'summary': newsletter
         }
         await crud.create_episode(db, episode_data)
         await db.commit()
@@ -130,7 +119,6 @@ async def process_episode(db: AsyncSession, podcast: Dict, episode: Dict, api_ke
             'podcast_id': podcast['id'],
             'episode_id': episode['id'],
             'title': episode['title'],
-            'output_path': result_path,
             'newsletter': newsletter
         }
         
@@ -145,7 +133,7 @@ async def process_episode(db: AsyncSession, podcast: Dict, episode: Dict, api_ke
         }
         
     finally:
-        cleanup_files(downloaded_file, transformed_audio, None, result_path)
+        cleanup_files(downloaded_file, transformed_audio, None, None)
 
 async def lambda_handler(event=None, context=None):
     """AWS Lambda handler for podcast processing. Runs every X minutes via EventBridge."""
