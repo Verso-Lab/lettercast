@@ -29,6 +29,8 @@ class Podcast(Base):
     created_at = Column(DateTime(timezone=True), server_default=text('CURRENT_TIMESTAMP'))
     frequency = Column(Text)
     tags = Column(JSON)
+    category = Column(Text)
+    prompt_addition = Column(Text)
 
     episodes = relationship("Episode", back_populates="podcast")
 
