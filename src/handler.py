@@ -13,7 +13,7 @@ from core.scraper import get_recent_episodes
 from src.database import crud
 from src.database.config import AsyncSessionLocal
 from utils.logging_config import setup_logging
-from src.database.models import Podcasts
+from src.database.models import Podcast
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ def cleanup_files(downloaded_file, transformed_audio, context, result_path):
     if context is not None and result_path and os.path.exists(result_path):
         os.unlink(result_path)
 
-async def load_podcasts(db: AsyncSession) -> List[Dict]:
+async def load_podcasts(db: AsyncSession) -> List[Podcast]:
     """Load all podcasts from database"""
     try:
         return await crud.list_podcasts(db)
@@ -40,7 +40,7 @@ async def load_podcasts(db: AsyncSession) -> List[Dict]:
         logger.error(f"Failed to load podcasts: {e}")
         raise
 
-async def find_unprocessed_episodes(db: AsyncSession, podcast: Dict, rss_episodes: List[Dict], minutes: int) -> List[Dict]:
+async def find_unprocessed_episodes(db: AsyncSession, podcast: Podcast, rss_episodes: List[Dict], minutes: int) -> List[Dict]:
     """Find episodes from RSS that don't exist in our database and are within time window"""
     unprocessed = []
     now = datetime.now(pytz.UTC)
@@ -77,7 +77,7 @@ async def find_unprocessed_episodes(db: AsyncSession, podcast: Dict, rss_episode
     
     return unprocessed
 
-async def process_episode(db: AsyncSession, podcast: Dict, episode: Dict, api_key: str) -> Dict:
+async def process_episode(db: AsyncSession, podcast: Podcast, episode: Dict, api_key: str) -> Dict:
     """Process a single podcast episode"""
     downloaded_file = None
     transformed_audio = None
@@ -138,7 +138,7 @@ async def process_episode(db: AsyncSession, podcast: Dict, episode: Dict, api_ke
 
         result = {
             'status': 'success',
-            'podcast_id': podcast['id'],
+            'podcast_id': podcast.id,
             'episode_id': episode['id'],
             'title': episode['title'],
             'newsletter': newsletter
@@ -150,7 +150,7 @@ async def process_episode(db: AsyncSession, podcast: Dict, episode: Dict, api_ke
         logger.error(f"Failed to process episode {episode['id']}: {str(e)}", exc_info=True)
         return {
             'status': 'error',
-            'podcast_id': podcast['id'],
+            'podcast_id': podcast.id,
             'episode_id': episode['id'],
             'title': episode['title'],
             'error': str(e)
@@ -183,43 +183,37 @@ async def lambda_handler(event=None, context=None):
             errors = []
             
             # Process each podcast's new episodes
-            for podcast_dict in podcasts:
+            for podcast in podcasts:
                 try:
-                    logger.info(f"Checking for new episodes: {podcast_dict['name']}")
-                    
-                    # Convert dictionary to Podcasts model for scraper
-                    podcast = Podcasts(**{
-                        k: v for k, v in podcast_dict.items() 
-                        if not k.startswith('_')
-                    })
+                    logger.info(f"Checking for new episodes: {podcast.name}")
                     
                     # Get episodes from RSS
                     rss_episodes = get_recent_episodes(podcast)['episodes']
                     # Find which ones aren't in our database and are within time window
-                    unprocessed = await find_unprocessed_episodes(db, podcast_dict, rss_episodes, minutes)
+                    unprocessed = await find_unprocessed_episodes(db, podcast, rss_episodes, minutes)
                     
                     total_new_episodes += len(unprocessed)
                     
                     if unprocessed:
                         for episode in unprocessed:
-                            result = await process_episode(db, podcast_dict, episode, api_key)
+                            result = await process_episode(db, podcast, episode, api_key)
                             if result['status'] == 'success':
                                 successful_processes += 1
                             else:
                                 failed_processes += 1
                                 errors.append({
-                                    'podcast': podcast_dict['name'],
+                                    'podcast': podcast.name,
                                     'episode': episode['title'],
                                     'error': result['error']
                                 })
                     else:
-                        logger.info(f"No new episodes found for podcast: {podcast_dict['name']}")
+                        logger.info(f"No new episodes found for podcast: {podcast.name}")
                 
                 except Exception as e:
-                    logger.error(f"Error processing podcast {podcast_dict['name']}: {str(e)}")
+                    logger.error(f"Error processing podcast {podcast.name}: {str(e)}")
                     failed_processes += 1
                     errors.append({
-                        'podcast': podcast_dict['name'],
+                        'podcast': podcast.name,
                         'error': str(e)
                     })
                     continue

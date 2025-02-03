@@ -1,8 +1,8 @@
 import pandas as pd
 from handler import lambda_handler, load_podcasts
-from src.database.models import Podcasts
+from src.database.models import Podcast
 
-def display_podcasts(podcasts: list[Podcasts]):
+def display_podcasts(podcasts: list[Podcast]):
     """Display numbered list of podcasts"""
     print("\nAvailable podcasts:")
     print("-" * 50)

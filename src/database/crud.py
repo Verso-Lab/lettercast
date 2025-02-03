@@ -1,175 +1,89 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, update
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 from datetime import datetime
-import pytz
-from typing import Optional, List, Dict
-from src.database.models import Podcasts, Episodes
+from typing import Optional, List
+from uuid import UUID
+from .models import (
+    Podcast, Episode, User, Subscription,
+    PodcastBase, EpisodeBase, UserBase, SubscriptionBase
+)
 
 # Podcast Operations
-async def get_podcast_by_id(db: AsyncSession, podcast_id: str, load_episodes: bool = False) -> Optional[Podcasts]:
-    """Get a podcast by its ID with optional episode loading"""
-    query = select(Podcasts)
-    if load_episodes:
-        query = query.options(selectinload(Podcasts.episodes))
-    query = query.where(Podcasts.id == podcast_id)
-    result = await db.execute(query)
-    return result.scalar_one_or_none()
+async def get_podcast_by_id(db: AsyncSession, podcast_id: UUID) -> Optional[Podcast]:
+    return await db.get(Podcast, podcast_id)
 
-async def get_podcast_by_rss_url(db: AsyncSession, rss_url: str) -> Optional[Podcasts]:
-    """Get a podcast by its RSS URL"""
-    result = await db.execute(
-        select(Podcasts).where(Podcasts.rss_url == rss_url)
-    )
-    return result.scalar_one_or_none()
+async def get_podcast_by_rss_url(db: AsyncSession, rss_url: str) -> Optional[Podcast]:
+    statement = select(Podcast).where(Podcast.rss_url == rss_url)
+    return await db.exec(statement).first()
 
-async def create_podcast(db: AsyncSession, data: Dict) -> Podcasts:
-    """Create a new podcast
-    
-    Args:
-        db: Database session
-        data: Dictionary containing podcast data with fields:
-            - name (required): The name of the podcast
-            - rss_url (required): The RSS feed URL
-            - category (required): The podcast category
-            - publisher (optional): The podcast publisher
-            - description (optional): The podcast description
-            - image_url (optional): URL of the podcast image
-            - frequency (optional): Publishing frequency
-            - tags (optional): JSON tags
-            - prompt_addition (optional): Additional prompt text
-        
-    Returns:
-        Created Podcasts instance
-        
-    Raises:
-        ValueError: If required fields are missing
-    """
-    required_fields = ['name', 'rss_url', 'category']
-    missing_fields = [field for field in required_fields if not data.get(field)]
-    if missing_fields:
-        raise ValueError(f"Missing required podcast fields: {', '.join(missing_fields)}")
-    
-    # Ensure tags is JSON if provided
-    if 'tags' in data and not isinstance(data['tags'], (dict, list)):
-        raise ValueError("Tags must be a valid JSON object or array")
-        
-    podcast = Podcasts(**data)
+async def create_podcast(db: AsyncSession, podcast_data: PodcastBase) -> Podcast:
+    podcast = Podcast.model_validate(podcast_data)
     db.add(podcast)
+    await db.commit()
+    await db.refresh(podcast)
     return podcast
 
 async def list_podcasts(
     db: AsyncSession,
-    with_episode_count: bool = False,
     limit: int = 100,
     offset: int = 0
-) -> List[Dict]:
-    """List podcasts with optional episode count"""
-    query = select(Podcasts)
-    if with_episode_count:
-        query = query.add_columns(
-            func.count(Episodes.id).label('episode_count')
-        ).outerjoin(Episodes).group_by(Podcasts.id)
-    
-    query = query.limit(limit).offset(offset)
-    result = await db.execute(query)
-    
-    if with_episode_count:
-        return [
-            {**podcast.__dict__, 'episode_count': count}
-            for podcast, count in result.all()
-        ]
-    return [podcast.__dict__ for podcast in result.scalars().all()]
+) -> List[Podcast]:
+    statement = select(Podcast).offset(offset).limit(limit)
+    result = await db.exec(statement)
+    return result.all()
 
 # Episode Operations
-async def get_episode_by_id(db: AsyncSession, episode_id: str, load_podcast: bool = False) -> Optional[Episodes]:
-    """Get an episode by its ID"""
-    query = select(Episodes)
+async def get_episode_by_id(db: AsyncSession, episode_id: UUID, load_podcast: bool = False) -> Optional[Episode]:
+    query = select(Episode)
     if load_podcast:
-        query = query.options(selectinload(Episodes.podcast))
-    query = query.where(Episodes.id == episode_id)
-    result = await db.execute(query)
-    return result.scalar_one_or_none()
+        query = query.options(selectinload(Episode.podcast))
+    query = query.where(Episode.id == episode_id)
+    result = await db.exec(query)
+    return result.first()
 
-async def get_episode_by_guid(db: AsyncSession, rss_guid: str) -> Optional[Episodes]:
-    """Get an episode by its RSS GUID"""
-    result = await db.execute(
-        select(Episodes).where(Episodes.rss_guid == rss_guid)
-    )
-    return result.scalar_one_or_none()
+async def get_episode_by_guid(db: AsyncSession, rss_guid: str) -> Optional[Episode]:
+    statement = select(Episode).where(Episode.rss_guid == rss_guid)
+    result = await db.exec(statement)
+    return result.first()
 
-async def create_episode(db: AsyncSession, data: Dict) -> Episodes:
-    """Create a new episode
-    
-    Args:
-        db: Database session
-        data: Dictionary containing episode data with fields:
-            - podcast_id (required): The ID of the associated podcast
-            - rss_guid (required): The RSS GUID of the episode
-            - title (required): The episode title
-            - publish_date (required): The publication date
-            - episode_description (optional): The episode description
-            - summary (optional): The episode summary
-        
-    Returns:
-        Created Episodes instance
-        
-    Raises:
-        ValueError: If required fields are missing
-    """
-    required_fields = ['podcast_id', 'rss_guid', 'title', 'publish_date']
-    missing_fields = [field for field in required_fields if not data.get(field)]
-    if missing_fields:
-        raise ValueError(f"Missing required episode fields: {', '.join(missing_fields)}")
-        
-    if 'publish_date' in data and isinstance(data['publish_date'], str):
-        data['publish_date'] = datetime.fromisoformat(data['publish_date'])
-    
-    # Handle newline encoding for summary (model has event listeners for this)
-    if 'summary' in data and data['summary'] is not None:
-        data['summary'] = data['summary'].replace('\n', '\\n')
-        
-    episode = Episodes(**data)
+async def create_episode(db: AsyncSession, episode_data: EpisodeBase) -> Episode:
+    episode = Episode.model_validate(episode_data)
     db.add(episode)
+    await db.commit()
+    await db.refresh(episode)
     return episode
 
 async def get_podcast_episodes(
     db: AsyncSession,
-    podcast_id: str,
+    podcast_id: UUID,
     limit: int = 100,
     offset: int = 0
-) -> List[Episodes]:
-    """Get episodes for a specific podcast"""
-    result = await db.execute(
-        select(Episodes)
-        .where(Episodes.podcast_id == podcast_id)
-        .order_by(Episodes.publish_date.desc())
-        .limit(limit)
-        .offset(offset)
-    )
-    return result.scalars().all()
+) -> List[Episode]:
+    statement = select(Episode).where(Episode.podcast_id == podcast_id).order_by(Episode.publish_date.desc()).limit(limit).offset(offset)
+    result = await db.exec(statement)
+    return result.all()
 
 async def get_recent_episodes(
     db: AsyncSession,
     limit: int = 20,
     load_podcast: bool = True
-) -> List[Episodes]:
-    """Get recent episodes across all podcasts"""
-    query = select(Episodes).order_by(Episodes.publish_date.desc()).limit(limit)
+) -> List[Episode]:
+    query = select(Episode).order_by(Episode.publish_date.desc()).limit(limit)
     if load_podcast:
-        query = query.options(selectinload(Episodes.podcast))
-    result = await db.execute(query)
-    return result.scalars().all()
+        query = query.options(selectinload(Episode.podcast))
+    result = await db.exec(query)
+    return result.all()
 
 async def get_unprocessed_episodes(
     db: AsyncSession,
     limit: int = 100,
     load_podcast: bool = False
-) -> List[Episodes]:
-    """Get episodes that haven't been processed yet (no created_at timestamp)"""
-    query = select(Episodes).where(Episodes.created_at.is_(None))
+) -> List[Episode]:
+    query = select(Episode).where(Episode.created_at.is_(None))
     if load_podcast:
-        query = query.options(selectinload(Episodes.podcast))
-    query = query.order_by(Episodes.publish_date.desc()).limit(limit)
-    result = await db.execute(query)
-    return result.scalars().all() 
+        query = query.options(selectinload(Episode.podcast))
+    query = query.order_by(Episode.publish_date.desc()).limit(limit)
+    result = await db.exec(query)
+    return result.all() 
