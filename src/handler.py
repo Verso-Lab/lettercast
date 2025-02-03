@@ -72,7 +72,7 @@ async def find_unprocessed_episodes(db: AsyncSession, podcast: Podcast, rss_epis
             new_episodes += 1
     
     logger.info(
-        f"Found {episodes_in_window} episodes within {minutes} minute window for {podcast['name']}, of which {new_episodes} are new"
+        f"Found {episodes_in_window} episodes within {minutes} minute window for {podcast.name}, of which {new_episodes} are new"
     )
     
     return unprocessed
@@ -87,7 +87,7 @@ async def process_episode(db: AsyncSession, podcast: Podcast, episode: Dict, api
         required_podcast_fields = ['id', 'name', 'category', 'prompt_addition']
         required_episode_fields = ['id', 'title', 'url', 'publish_date', 'rss_guid']
         
-        missing_podcast_fields = [field for field in required_podcast_fields if not podcast.get(field)]
+        missing_podcast_fields = [field for field in required_podcast_fields if not getattr(podcast, field, None)]
         if missing_podcast_fields:
             raise ValueError(f"Missing required podcast fields: {', '.join(missing_podcast_fields)}")
             
@@ -96,7 +96,7 @@ async def process_episode(db: AsyncSession, podcast: Podcast, episode: Dict, api
             raise ValueError(f"Missing required episode fields: {', '.join(missing_episode_fields)}")
         
         # Download audio file
-        logger.info(f"Downloading episode: {episode['publish_date']} - {podcast['name']} - {episode['title']} - Category: {podcast['category']}")
+        logger.info(f"Downloading episode: {episode['publish_date']} - {podcast.name} - {episode['title']} - Category: {podcast.category}")
         downloaded_file = download_audio(episode['url'])
         
         # Transform audio
@@ -108,23 +108,21 @@ async def process_episode(db: AsyncSession, podcast: Podcast, episode: Dict, api
         
         # Process podcast
         logger.info(f"Processing episode: {episode['title']}")
-        publish_date = datetime.fromisoformat(episode['publish_date']) if isinstance(episode['publish_date'], str) else episode['publish_date']
         
         newsletter = analyzer.process_podcast(
             audio_path=transformed_audio,
-            name=podcast['name'],
+            name=podcast.name,
             title=episode['title'],
-            category=podcast['category'],
-            publish_date=publish_date,
-            prompt_addition=podcast['prompt_addition'],
+            category=podcast.category,
+            publish_date=episode['publish_date'],  # Use datetime directly
+            prompt_addition=podcast.prompt_addition,
             episode_description=episode.get('episode_description', '')
         )
         
         # Create episode in database with newsletter as summary
         episode_data = {
-            **episode,  # Unpack all existing episode data
-            'podcast_id': podcast['id'],  # Ensure correct podcast_id
-            'publish_date': datetime.fromisoformat(episode['publish_date']) if isinstance(episode['publish_date'], str) else episode['publish_date'],
+            **episode,  # Unpack all episode data (now with datetime object)
+            'podcast_id': podcast.id,  # Ensure correct podcast_id
             'summary': newsletter  # Add the generated newsletter
         }
         
