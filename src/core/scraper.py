@@ -48,11 +48,22 @@ def get_recent_episodes(podcast: Podcasts, limit: int | None = None) -> Dict:
     
     Args:
         podcast: Podcasts model instance containing podcast metadata
-        limit: Optional number of most recent episodes to return. If None, returns all episodes.
-    
+        limit: Optional limit on number of episodes to return
+        
     Returns:
-        Dict containing list of episode objects
+        Dict containing episodes and metadata
+        
+    Raises:
+        RSSParsingError: If RSS feed cannot be fetched or parsed
+        ValueError: If podcast is invalid or missing required fields
     """
+    if not podcast:
+        raise ValueError("Podcast cannot be None")
+    if not podcast.rss_url:
+        raise ValueError("Podcast RSS URL cannot be empty")
+    if not podcast.name:
+        raise ValueError("Podcast name cannot be empty")
+        
     try:
         logger.info(f"Scraping RSS feed for {podcast.name} from {podcast.rss_url}")
         
@@ -61,8 +72,10 @@ def get_recent_episodes(podcast: Podcasts, limit: int | None = None) -> Dict:
         response.raise_for_status()
         
         # Parse XML
-        parser = etree.XMLParser(recover=True)  # Recover from errors if possible
-        root = etree.fromstring(response.content, parser=parser)
+        try:
+            root = etree.fromstring(response.content)
+        except etree.XMLSyntaxError as e:
+            raise RSSParsingError(f"Invalid XML in RSS feed: {str(e)}")
         
         # Handle different RSS namespaces
         namespaces = {
