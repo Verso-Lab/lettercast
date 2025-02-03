@@ -42,7 +42,7 @@ def parse_datetime(date_str: str) -> datetime:
         logger.warning(f"Failed to parse date {date_str}: {e}")
         return datetime.now(pytz.UTC)
 
-def get_recent_episodes(podcast: Podcasts, limit: int | None = None) -> Dict:
+def get_recent_episodes(podcast: Podcast, limit: int | None = None) -> Dict:
     """
     Fetch and parse the RSS feed for a podcast, returning episodes.
     

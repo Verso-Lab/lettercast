@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core import PodcastAnalyzer, transform_audio
 from utils.logging_config import setup_logging
-from database.models import Podcasts
+from database.models import Podcast
 from database.config import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ def select_audio_file():
 async def select_podcast():
     """Select a podcast to use for metadata"""
     async with AsyncSessionLocal() as session:
-        result = await session.execute(select(Podcasts))
+        result = await session.exec(select(Podcast))
         podcasts = result.scalars().all()
         
         print("\nWhich podcast is this episode from?:")
