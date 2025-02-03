@@ -45,6 +45,9 @@ async def find_unprocessed_episodes(db: AsyncSession, podcast: Dict, rss_episode
     unprocessed = []
     now = datetime.now(pytz.UTC)
     
+    episodes_in_window = 0
+    new_episodes = 0
+    
     for episode in rss_episodes:
         # Check if episode is within time window
         publish_date = episode['publish_date']
@@ -59,11 +62,18 @@ async def find_unprocessed_episodes(db: AsyncSession, podcast: Dict, rss_episode
         time_diff = now - publish_date
         if time_diff.total_seconds() > minutes * 60:
             continue
+            
+        episodes_in_window += 1
         
         # Check if episode exists in database
         existing = await crud.get_episode_by_guid(db, episode['rss_guid'])
         if not existing:
             unprocessed.append(episode)
+            new_episodes += 1
+    
+    logger.info(
+        f"Found {episodes_in_window} episodes within {minutes} minute window for {podcast['name']}, of which {new_episodes} are new"
+    )
     
     return unprocessed
 
@@ -86,7 +96,7 @@ async def process_episode(db: AsyncSession, podcast: Dict, episode: Dict, api_ke
             raise ValueError(f"Missing required episode fields: {', '.join(missing_episode_fields)}")
         
         # Download audio file
-        logger.info(f"Downloading episode: {episode['title']} from {podcast['name']} ({podcast['category']})")
+        logger.info(f"Downloading episode: {episode['publish_date']} - {podcast['name']} - {episode['title']} - Category: {podcast['category']}")
         downloaded_file = download_audio(episode['url'])
         
         # Transform audio
