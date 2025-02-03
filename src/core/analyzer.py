@@ -68,7 +68,7 @@ class PodcastAnalyzer:
         if missing:
             logger.warning(f"Analysis missing required sections: {', '.join(missing)}")
     
-    def analyze_audio(self, audio_path: str, name: str, prompt_addition: str) -> str:
+    def analyze_audio(self, audio_path: str, name: str, category: str, prompt_addition: str) -> str:
         """Analyze a podcast episode and return detailed analysis.
         
         Args:
@@ -112,8 +112,18 @@ class PodcastAnalyzer:
             
             # Step 2: Generate newsletter
             logger.info("Step 2: Generating newsletter from insights and audio...")
+            
+            # Select appropriate prompt based on podcast category
+            if category == 'interview':
+                prompt = INTERVIEW_PROMPT
+            elif category == 'banter':
+                prompt = BANTER_PROMPT
+            else:
+                logger.warning(f"Unknown podcast category: {category}, defaulting to interview prompt")
+                prompt = INTERVIEW_PROMPT
+                
             analysis = self.model.generate_content(
-                [NEWSLETTER_PROMPT, insights, audio_file],
+                [prompt, insights, audio_file],
                 safety_settings=self.SAFETY_SETTINGS
             ).text
             
@@ -173,6 +183,7 @@ class PodcastAnalyzer:
         name: str,
         prompt_addition: Optional[str] = None,
         title: Optional[str] = None,
+        category: Optional[str] = None,
     ) -> str:
         """Process a podcast from audio to newsletter text.
         
@@ -181,6 +192,7 @@ class PodcastAnalyzer:
             name: Name of the podcast (not episode title)
             prompt_addition: Additional context about the podcast (e.g. description)
             title: Title of the specific episode
+            category: Category of the podcast
             
         Returns:
             str: Formatted newsletter text
@@ -189,5 +201,5 @@ class PodcastAnalyzer:
             logger.warning(f"No description found for podcast: {name}")
             prompt_addition = ""
         
-        analysis = self.analyze_audio(audio_path, name=name, prompt_addition=prompt_addition)
+        analysis = self.analyze_audio(audio_path, name=name, category=category, prompt_addition=prompt_addition)
         return self.format_newsletter(analysis, name, title)

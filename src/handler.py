@@ -74,7 +74,7 @@ async def process_episode(db: AsyncSession, podcast: Dict, episode: Dict, api_ke
     
     try:
         # Download audio file
-        logger.info(f"Downloading episode: {episode['title']} from {podcast['name']}")
+        logger.info(f"Downloading episode: {episode['title']} from {podcast['name']} ({podcast['category']})")
         downloaded_file = download_audio(episode['url'])
         
         # Transform audio
@@ -90,7 +90,8 @@ async def process_episode(db: AsyncSession, podcast: Dict, episode: Dict, api_ke
             audio_path=transformed_audio,
             name=podcast['name'],
             prompt_addition=podcast['prompt_addition'],
-            title=episode['title']
+            title=episode['title'],
+            category=podcast['category']
         )
         
         # Create episode in database with newsletter as summary
