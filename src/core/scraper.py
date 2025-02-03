@@ -126,17 +126,28 @@ def get_recent_episodes(podcast: Podcasts, limit: int | None = None) -> Dict:
                     logger.warning(f"No audio URL found for episode: {item.findtext('title', '')}")
                     continue
                 
+                # Create base episode dict with required fields
                 episode = {
-                    "id": str(uuid.uuid4()),
-                    "podcast_id": podcast.id,
-                    "name": podcast.name,
-                    "rss_guid": rss_guid,
-                    "title": item.findtext('title', '').strip(),
-                    "publish_date": publish_date.isoformat(),
-                    "summary": "",  # To be generated later
-                    "created_at": datetime.now(pytz.UTC).isoformat(),
-                    "url": audio_url
+                    'rss_guid': rss_guid,
+                    'title': item.findtext('title', '').strip(),
+                    'publish_date': publish_date.isoformat(),
+                    'url': audio_url,
                 }
+
+                # Add optional fields if they exist
+                description = (
+                    (item.find('content:encoded', namespaces).text if item.find('content:encoded', namespaces) is not None else None) or 
+                    item.findtext('description', '').strip()
+                )
+                if description:
+                    episode['episode_description'] = description
+
+                # Add metadata fields needed for processing
+                episode.update({
+                    'id': str(uuid.uuid4()),  # Temporary ID for processing
+                    'podcast_id': podcast.id,
+                    'name': podcast.name,  # For processing context
+                })
                 
                 episodes.append(episode)
                 

@@ -69,13 +69,14 @@ class PodcastAnalyzer:
         if missing:
             logger.warning(f"Analysis missing required sections: {', '.join(missing)}")
     
-    def analyze_audio(self, audio_path: str, name: str, category: str, prompt_addition: str) -> str:
+    def analyze_audio(self, audio_path: str, name: str, category: str, prompt_addition: str, episode_description: str = "") -> str:
         """Analyze a podcast episode and return detailed analysis.
         
         Args:
             audio_path: Path to the audio file to analyze
             name: Name of the podcast (not episode title)
             prompt_addition: Additional context about the podcast (e.g. description)
+            episode_description: Description of the specific episode
             
         Returns:
             str: Detailed analysis text
@@ -113,15 +114,16 @@ class PodcastAnalyzer:
             
             # Step 2: Generate newsletter
             logger.info("Step 2: Generating newsletter from insights and audio...")
+            logger.info(f"Using episode description: {episode_description[:50]}..." if episode_description else "No episode description detected")
             
             # Select appropriate prompt based on podcast category
             if category == 'interview':
-                prompt = INTERVIEW_PROMPT
+                prompt = INTERVIEW_PROMPT.format(episode_description=episode_description)
             elif category == 'banter':
-                prompt = BANTER_PROMPT
+                prompt = BANTER_PROMPT.format(episode_description=episode_description)
             else:
                 logger.warning(f"Unknown podcast category: {category}, defaulting to interview prompt")
-                prompt = INTERVIEW_PROMPT
+                prompt = INTERVIEW_PROMPT.format(episode_description=episode_description)
                 
             analysis = self.model.generate_content(
                 [prompt, insights, audio_file],
@@ -162,8 +164,6 @@ class PodcastAnalyzer:
                 raise AnalyzerError("Podcast name cannot be empty")
             if not title:
                 raise AnalyzerError("Episode title cannot be empty")
-            if not publish_date:
-                raise AnalyzerError("Publish date cannot be empty")
             
             date_str = publish_date.strftime("%B %d, %Y")
             newsletter = f"{date_str} | {name}\n# {title}\n"
@@ -199,6 +199,7 @@ class PodcastAnalyzer:
         category: str,
         publish_date: datetime,
         prompt_addition: str = "",
+        episode_description: str = "",
     ) -> str:
         """Process a podcast from audio to newsletter text.
         
@@ -208,7 +209,8 @@ class PodcastAnalyzer:
             title: Title of the specific episode
             category: Category of the podcast
             publish_date: Publication date of the episode
-            prompt_addition: Additional context about the podcast (e.g. description), defaults to empty string
+            prompt_addition: Custom podcast context, defaults to empty string
+            episode_description: Description of the specific episode, defaults to empty string
             
         Returns:
             str: Formatted newsletter text
@@ -217,22 +219,49 @@ class PodcastAnalyzer:
             AnalyzerError: If any required parameters are missing or invalid
         """
         try:
+            # Validate required parameters
+            required_params = {
+                'audio_path': audio_path,
+                'name': name,
+                'title': title,
+                'category': category,
+                'publish_date': publish_date
+            }
+            
+            missing_params = [k for k, v in required_params.items() if not v]
+            if missing_params:
+                raise AnalyzerError(f"Missing required parameters: {', '.join(missing_params)}")
+                
             if not os.path.exists(audio_path):
                 raise AnalyzerError(f"Audio file not found: {audio_path}")
-            if not name:
-                raise AnalyzerError("Podcast name cannot be empty")
-            if not title:
-                raise AnalyzerError("Episode title cannot be empty")
-            if not category:
-                raise AnalyzerError("Podcast category cannot be empty")
-            if not publish_date:
-                raise AnalyzerError("Publish date cannot be empty")
+                
+            # Validate and normalize optional parameters
+            analysis_params = {
+                'name': name,
+                'category': category,
+                'prompt_addition': prompt_addition or "",  # Ensure empty string if None
+                'episode_description': episode_description or ""  # Ensure empty string if None
+            }
             
+            # Log optional parameter status
             if not prompt_addition:
-                logger.warning(f"No description found for podcast: {name}")
+                logger.warning(f"No prompt addition found for podcast: {name}")
+            if not episode_description:
+                logger.warning(f"No episode description found for podcast: {name}")
             
-            analysis = self.analyze_audio(audio_path, name=name, category=category, prompt_addition=prompt_addition)
-            return self.format_newsletter(analysis, name, title, publish_date)
+            # Get analysis using normalized parameters
+            analysis = self.analyze_audio(
+                audio_path,
+                **analysis_params
+            )
+            
+            # Format newsletter with validated parameters
+            return self.format_newsletter(
+                analysis=analysis,
+                name=name,
+                title=title,
+                publish_date=publish_date
+            )
             
         except Exception as e:
             if not isinstance(e, AnalyzerError):

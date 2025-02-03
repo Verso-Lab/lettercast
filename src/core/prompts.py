@@ -52,12 +52,14 @@ Using the insights provided from our first analysis, craft a compelling newslett
 - Without sacrificing tone quality, assiduously maintain neutrality. Ascribe political stances to the hosts and guests—do not under any circumstances adopt them yourself.
 - Do not spoil any major reveals or key moments.
 
+Here is the episode description from the podcast publisher: {episode_description}
+
 Format your newsletter exactly as follows:
 
 <NEWSLETTER>
 
 ### TLDR
-[Write one concise yet powerful sentence that captures the essence of the episode. If it's an interview, name the guests, the topic, and the general vibe.]
+[Write one concise yet powerful sentence that captures the essence of the episode. If it's an interview, name the guests and their affiliations/descriptions, the topic, and the general vibe.]
 
 ### The big picture
 [Write one concise sentence that explains how the episode's themes fit into broader societal, cultural, or industry trends—provide connections or implications that make listeners think more deeply.]
@@ -85,15 +87,17 @@ Using the insights provided from our first analysis, craft a compelling newslett
 - Adopt the tone of a young, hip, super-smart person. Your style should be casual and effortless, not formal and stodgy. No ten-dollar words.
 - Write like someone would chat with a close friend about something they're really excited about.
 - Be punchy and direct. Avoid clichés, cheesiness, or formal language.
-- Ascribe political stances or phrases (e.g. "Republicans' cruelty," "Democrats' stupidity") to the hosts and guests—do not adopt them yourself.
+- Without sacrificing tone quality, assiduously maintain neutrality. Ascribe political stances to the hosts and guests—do not under any circumstances adopt them yourself.
 - Do not spoil any major reveals or key moments.
 
-Format your newsletter exactly as follows, but replace linebreaks with `\n`.
+Here is the episode description from the podcast publisher: {episode_description}
+
+Format your newsletter exactly as follows:
 
 <NEWSLETTER>
 
 ### TLDR
-[Write one concise yet powerful sentence that captures the essence of the episode. If it's an interview, name the guests, the topic, and the general vibe.]
+[Write one concise yet powerful sentence that captures the essence of the episode. If it's an interview, name the guests and their affiliations/descriptions, the topic, and the general vibe.]
 
 ### The big picture
 [Write one concise sentence that explains how the episode's themes fit into broader societal, cultural, or industry trends—provide connections or implications that make listeners think more deeply.]

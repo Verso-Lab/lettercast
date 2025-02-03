@@ -101,6 +101,9 @@ async def main():
         # Process podcast
         title = os.path.basename(audio_path)
         
+        # Get episode description from user
+        episode_description = input("\nEnter episode description (optional, press Enter to skip): ").strip()
+        
         # Analyze and print
         newsletter = analyzer.process_podcast(
             audio_path=transformed_audio,
@@ -108,7 +111,8 @@ async def main():
             title=title,
             category=podcast.category or 'interview',  # Default to interview if not set
             publish_date=datetime.now(pytz.UTC),
-            prompt_addition=podcast.prompt_addition or ''
+            prompt_addition=podcast.prompt_addition or '',
+            episode_description=episode_description
         )
         
         print("\nGenerated Newsletter:")

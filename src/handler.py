@@ -116,17 +116,23 @@ async def process_episode(db: AsyncSession, podcast: Dict, episode: Dict, api_ke
             title=episode['title'],
             category=podcast['category'],
             publish_date=publish_date,
-            prompt_addition=podcast['prompt_addition']
+            prompt_addition=podcast['prompt_addition'],
+            episode_description=episode.get('episode_description', '')
         )
         
         # Create episode in database with newsletter as summary
         episode_data = {
-            'podcast_id': podcast['id'],
-            'rss_guid': episode['rss_guid'],
-            'title': episode['title'],
-            'publish_date': datetime.fromisoformat(episode['publish_date']),
-            'summary': newsletter
+            **episode,  # Unpack all existing episode data
+            'podcast_id': podcast['id'],  # Ensure correct podcast_id
+            'publish_date': datetime.fromisoformat(episode['publish_date']) if isinstance(episode['publish_date'], str) else episode['publish_date'],
+            'summary': newsletter  # Add the generated newsletter
         }
+        
+        # Remove fields that aren't in the database model
+        fields_to_remove = ['id', 'name', 'url', 'created_at']
+        for field in fields_to_remove:
+            episode_data.pop(field, None)
+            
         await crud.create_episode(db, episode_data)
         await db.commit()
 

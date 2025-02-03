@@ -2,7 +2,6 @@ from typing import List
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKeyConstraint, JSON, PrimaryKeyConstraint, Text, UniqueConstraint, Uuid, text, event
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
-from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm.base import Mapped
 
 Base = declarative_base()
@@ -57,6 +56,7 @@ class Episodes(Base):
     podcast_id = mapped_column(Uuid, nullable=False)
     rss_guid = mapped_column(Text, nullable=False)
     title = mapped_column(Text, nullable=False)
+    episode_description = mapped_column(Text)
     publish_date = mapped_column(DateTime(True), nullable=False)
     summary = mapped_column(Text)
     created_at = mapped_column(DateTime(True), server_default=text('CURRENT_TIMESTAMP'))

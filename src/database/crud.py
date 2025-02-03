@@ -28,7 +28,16 @@ async def create_podcast(db: AsyncSession, data: Dict) -> Podcasts:
     
     Args:
         db: Database session
-        data: Dictionary containing podcast data
+        data: Dictionary containing podcast data with fields:
+            - name (required): The name of the podcast
+            - rss_url (required): The RSS feed URL
+            - category (required): The podcast category
+            - publisher (optional): The podcast publisher
+            - description (optional): The podcast description
+            - image_url (optional): URL of the podcast image
+            - frequency (optional): Publishing frequency
+            - tags (optional): JSON tags
+            - prompt_addition (optional): Additional prompt text
         
     Returns:
         Created Podcasts instance
@@ -40,6 +49,10 @@ async def create_podcast(db: AsyncSession, data: Dict) -> Podcasts:
     missing_fields = [field for field in required_fields if not data.get(field)]
     if missing_fields:
         raise ValueError(f"Missing required podcast fields: {', '.join(missing_fields)}")
+    
+    # Ensure tags is JSON if provided
+    if 'tags' in data and not isinstance(data['tags'], (dict, list)):
+        raise ValueError("Tags must be a valid JSON object or array")
         
     podcast = Podcasts(**data)
     db.add(podcast)
@@ -90,7 +103,13 @@ async def create_episode(db: AsyncSession, data: Dict) -> Episodes:
     
     Args:
         db: Database session
-        data: Dictionary containing episode data
+        data: Dictionary containing episode data with fields:
+            - podcast_id (required): The ID of the associated podcast
+            - rss_guid (required): The RSS GUID of the episode
+            - title (required): The episode title
+            - publish_date (required): The publication date
+            - episode_description (optional): The episode description
+            - summary (optional): The episode summary
         
     Returns:
         Created Episodes instance
@@ -105,6 +124,10 @@ async def create_episode(db: AsyncSession, data: Dict) -> Episodes:
         
     if 'publish_date' in data and isinstance(data['publish_date'], str):
         data['publish_date'] = datetime.fromisoformat(data['publish_date'])
+    
+    # Handle newline encoding for summary (model has event listeners for this)
+    if 'summary' in data and data['summary'] is not None:
+        data['summary'] = data['summary'].replace('\n', '\\n')
         
     episode = Episodes(**data)
     db.add(episode)
