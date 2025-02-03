@@ -130,7 +130,7 @@ def get_recent_episodes(podcast: Podcast, limit: int | None = None) -> Dict:
                 episode = {
                     'rss_guid': rss_guid,
                     'title': item.findtext('title', '').strip(),
-                    'publish_date': publish_date.isoformat(),
+                    'publish_date': publish_date,  # Keep the datetime object
                     'url': audio_url,
                 }
 

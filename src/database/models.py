@@ -1,12 +1,13 @@
 from typing import List, Optional, Dict, Any
 from sqlmodel import SQLModel, Field, Relationship, JSON
 from uuid import UUID
-from sqlalchemy import text, JSON, UniqueConstraint
+from sqlalchemy import text, JSON, UniqueConstraint, TIMESTAMP
 from sqlalchemy import event
 from datetime import datetime
 
 class TimestampMixin(SQLModel):
-    created_at: datetime = Field(
+    created_at: Optional[datetime] = Field(
+        default=None,
         sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")}
     )
 
@@ -46,7 +47,7 @@ class EpisodeBase(SQLModel):
     rss_guid: str = Field(nullable=False)
     title: str = Field(nullable=False)
     episode_description: Optional[str] = None
-    publish_date: datetime = Field(nullable=False)
+    publish_date: datetime = Field(nullable=False, sa_type=TIMESTAMP(timezone=True))
     summary: Optional[str] = None
 
 class Episode(EpisodeBase, TimestampMixin, table=True):
