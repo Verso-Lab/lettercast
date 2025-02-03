@@ -42,13 +42,13 @@ def parse_datetime(date_str: str) -> datetime:
         logger.warning(f"Failed to parse date {date_str}: {e}")
         return datetime.now(pytz.UTC)
 
-def get_recent_episodes(podcast: Podcasts, limit: int = 5) -> Dict:
+def get_recent_episodes(podcast: Podcasts, limit: int | None = None) -> Dict:
     """
-    Fetch and parse the RSS feed for a podcast, returning the most recent episodes.
+    Fetch and parse the RSS feed for a podcast, returning episodes.
     
     Args:
         podcast: Podcasts model instance containing podcast metadata
-        limit: Number of most recent episodes to return
+        limit: Optional number of most recent episodes to return. If None, returns all episodes.
     
     Returns:
         Dict containing list of episode objects
@@ -80,9 +80,10 @@ def get_recent_episodes(podcast: Podcasts, limit: int = 5) -> Dict:
         if not items:
             raise RSSParsingError("No episodes found in feed")
         
-        # Process most recent episodes
+        # Process episodes (all if limit is None, otherwise up to limit)
         episodes = []
-        for item in items[:limit]:
+        items_to_process = items[:limit] if limit is not None else items
+        for item in items_to_process:
             try:
                 # Extract guid, fallback to link if no guid
                 guid = item.find('guid')
