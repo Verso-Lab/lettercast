@@ -57,6 +57,7 @@ class Episodes(Base):
     podcast_id = mapped_column(Uuid, nullable=False)
     rss_guid = mapped_column(Text, nullable=False)
     title = mapped_column(Text, nullable=False)
+    episode_description = mapped_column(Text)
     publish_date = mapped_column(DateTime(True), nullable=False)
     summary = mapped_column(Text)
     created_at = mapped_column(DateTime(True), server_default=text('CURRENT_TIMESTAMP'))

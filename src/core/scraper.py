@@ -135,7 +135,11 @@ def get_recent_episodes(podcast: Podcasts, limit: int | None = None) -> Dict:
                     "publish_date": publish_date.isoformat(),
                     "summary": "",  # To be generated later
                     "created_at": datetime.now(pytz.UTC).isoformat(),
-                    "url": audio_url
+                    "url": audio_url,
+                    "episode_description": (
+                        item.find('content:encoded', namespaces).text or 
+                        item.findtext('description', '').strip()
+                    )
                 }
                 
                 episodes.append(episode)

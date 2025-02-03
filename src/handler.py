@@ -116,7 +116,8 @@ async def process_episode(db: AsyncSession, podcast: Dict, episode: Dict, api_ke
             title=episode['title'],
             category=podcast['category'],
             publish_date=publish_date,
-            prompt_addition=podcast['prompt_addition']
+            prompt_addition=podcast['prompt_addition'],
+            episode_description=episode.get('episode_description', '')
         )
         
         # Create episode in database with newsletter as summary

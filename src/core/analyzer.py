@@ -69,13 +69,14 @@ class PodcastAnalyzer:
         if missing:
             logger.warning(f"Analysis missing required sections: {', '.join(missing)}")
     
-    def analyze_audio(self, audio_path: str, name: str, category: str, prompt_addition: str) -> str:
+    def analyze_audio(self, audio_path: str, name: str, category: str, prompt_addition: str, episode_description: str = "") -> str:
         """Analyze a podcast episode and return detailed analysis.
         
         Args:
             audio_path: Path to the audio file to analyze
             name: Name of the podcast (not episode title)
             prompt_addition: Additional context about the podcast (e.g. description)
+            episode_description: Description of the specific episode
             
         Returns:
             str: Detailed analysis text
@@ -116,12 +117,12 @@ class PodcastAnalyzer:
             
             # Select appropriate prompt based on podcast category
             if category == 'interview':
-                prompt = INTERVIEW_PROMPT
+                prompt = INTERVIEW_PROMPT.format(episode_description=episode_description)
             elif category == 'banter':
-                prompt = BANTER_PROMPT
+                prompt = BANTER_PROMPT.format(episode_description=episode_description)
             else:
                 logger.warning(f"Unknown podcast category: {category}, defaulting to interview prompt")
-                prompt = INTERVIEW_PROMPT
+                prompt = INTERVIEW_PROMPT.format(episode_description=episode_description)
                 
             analysis = self.model.generate_content(
                 [prompt, insights, audio_file],
@@ -199,6 +200,7 @@ class PodcastAnalyzer:
         category: str,
         publish_date: datetime,
         prompt_addition: str = "",
+        episode_description: str = "",
     ) -> str:
         """Process a podcast from audio to newsletter text.
         
@@ -209,6 +211,7 @@ class PodcastAnalyzer:
             category: Category of the podcast
             publish_date: Publication date of the episode
             prompt_addition: Additional context about the podcast (e.g. description), defaults to empty string
+            episode_description: Description of the specific episode, defaults to empty string
             
         Returns:
             str: Formatted newsletter text
@@ -231,7 +234,13 @@ class PodcastAnalyzer:
             if not prompt_addition:
                 logger.warning(f"No description found for podcast: {name}")
             
-            analysis = self.analyze_audio(audio_path, name=name, category=category, prompt_addition=prompt_addition)
+            analysis = self.analyze_audio(
+                audio_path, 
+                name=name, 
+                category=category, 
+                prompt_addition=prompt_addition,
+                episode_description=episode_description
+            )
             return self.format_newsletter(analysis, name, title, publish_date)
             
         except Exception as e:
