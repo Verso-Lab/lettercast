@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime
+from dateutil import parser
 from statistics import mean
 from typing import Dict, List, Optional, Tuple
 
@@ -98,15 +99,10 @@ class PodcastProcessor:
             pub_date = item.findtext('pubDate')
             if pub_date:
                 try:
-                    date = datetime.strptime(pub_date, '%a, %d %b %Y %H:%M:%S %z')
+                    date = parser.parse(pub_date)
                     dates.append(date)
                 except ValueError:
-                    try:
-                        # Try alternate format
-                        date = datetime.strptime(pub_date, '%a, %d %b %Y %H:%M:%S %Z')
-                        dates.append(date.replace(tzinfo=pytz.UTC))
-                    except ValueError:
-                        continue
+                    continue
 
         if len(dates) < 2:
             return None
