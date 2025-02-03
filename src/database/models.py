@@ -2,7 +2,6 @@ from typing import List
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKeyConstraint, JSON, PrimaryKeyConstraint, Text, UniqueConstraint, Uuid, text, event
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
-from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm.base import Mapped
 
 Base = declarative_base()
