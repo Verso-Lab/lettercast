@@ -59,7 +59,7 @@ Format your newsletter exactly as follows:
 <NEWSLETTER>
 
 ### TLDR
-[Write one concise yet powerful sentence that captures the essence of the episode. If it's an interview, name the guests, the topic, and the general vibe.]
+[Write one concise yet powerful sentence that captures the essence of the episode. If it's an interview, name the guests and their affiliations/descriptions, the topic, and the general vibe.]
 
 ### The big picture
 [Write one concise sentence that explains how the episode's themes fit into broader societal, cultural, or industry trends—provide connections or implications that make listeners think more deeply.]
@@ -97,7 +97,7 @@ Format your newsletter exactly as follows:
 <NEWSLETTER>
 
 ### TLDR
-[Write one concise yet powerful sentence that captures the essence of the episode. If it's an interview, name the guests, the topic, and the general vibe.]
+[Write one concise yet powerful sentence that captures the essence of the episode. If it's an interview, name the guests and their affiliations/descriptions, the topic, and the general vibe.]
 
 ### The big picture
 [Write one concise sentence that explains how the episode's themes fit into broader societal, cultural, or industry trends—provide connections or implications that make listeners think more deeply.]
