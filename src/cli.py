@@ -1,13 +1,13 @@
 import pandas as pd
 from handler import lambda_handler, load_podcasts
-from core.scraper import Podcast
+from src.database.models import Podcasts
 
-def display_podcasts(podcasts: list[Podcast]):
+def display_podcasts(podcasts: list[Podcasts]):
     """Display numbered list of podcasts"""
     print("\nAvailable podcasts:")
     print("-" * 50)
     for i, podcast in enumerate(podcasts):
-        print(f"{i+1}. {podcast.podcast_name}")
+        print(f"{i+1}. {podcast.name}")
     print("-" * 50)
 
 def get_user_choice(max_choice: int) -> int:
@@ -33,7 +33,7 @@ def main():
         choice = get_user_choice(len(podcasts))
         chosen_podcast = podcasts[choice]
         
-        print(f"\nAnalyzing latest episode of: {chosen_podcast.podcast_name}")
+        print(f"\nAnalyzing latest episode of: {chosen_podcast.name}")
         
         # Create event with single podcast
         event = {

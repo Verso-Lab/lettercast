@@ -1,11 +1,12 @@
-import os
 import logging
-import tempfile
+import os
 import requests
+import tempfile
 import time
 from pathlib import Path
+from tqdm import tqdm
 from urllib.parse import urlparse
-from tqdm.auto import tqdm
+
 from utils.logging_config import setup_logging
 
 logger = logging.getLogger(__name__)

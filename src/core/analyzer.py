@@ -1,11 +1,13 @@
-import google.generativeai as genai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
-from pathlib import Path
 import logging
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import Optional, Tuple
-from .prompts import PREANALYSIS_PROMPT, NEWSLETTER_PROMPT, PODCAST_DESCRIPTIONS
+
+import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
+
+from .prompts import PODCAST_DESCRIPTIONS, PREANALYSIS_PROMPT, NEWSLETTER_PROMPT
 from utils.logging_config import setup_logging
 
 logger = logging.getLogger(__name__)
@@ -27,7 +29,7 @@ class PodcastAnalyzer:
         HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH
     }
     
-    REQUIRED_SECTIONS = ['TLDR', 'BIG PICTURE', 'HIGHLIGHTS', 'QUOTED', 'WORTH YOUR TIME IF']
+    REQUIRED_SECTIONS = ['TLDR', 'Big picture', 'Highlights', 'Quoted', 'Worth your time if...']
     
     def __init__(self, api_key):
         """Initialize the analyzer with a Gemini API key"""
@@ -89,10 +91,10 @@ class PodcastAnalyzer:
             # Step 1: Get initial insights
             logger.info("Step 1: Getting initial insights from audio...")
             formatted_prompt = PREANALYSIS_PROMPT.format(
-                podcast_name=podcast_name,
-                podcast_description=podcast_description
+                name=name,
+                prompt_addition=prompt_addition
             )
-            logger.info(f"Using podcast description for analysis: {podcast_description[:100]}..." if podcast_description else "No podcast description provided")
+            logger.info(f"Using podcast description for analysis" if podcast_description else "No podcast description provided")
             
             insights = self.model.generate_content(
                 [formatted_prompt, audio_file],
@@ -116,22 +118,13 @@ class PodcastAnalyzer:
                 raise AnalyzerError(f"Analysis failed: {str(e)}") from None
             raise
     
-    def format_newsletter(self, analysis: str, podcast_name: Optional[str] = None, episode_name: Optional[str] = None) -> str:
+    def format_newsletter(self, analysis: str, name: Optional[str] = None, title: Optional[str] = None) -> str:
         """Format analysis into a newsletter."""
         try:
             logger.info("Formatting newsletter...")
             
             today = datetime.now().strftime("%B %d, %Y")
-            newsletter = f"{today}\n"
-            
-            if episode_name:
-                newsletter += f"## {episode_name}\n\n"
-            else:
-                newsletter += f"## Lettercast\n\n"
-            
-            if podcast_name:
-                newsletter += f"### {podcast_name}\n\n"
-            
+            newsletter = f"{today} | {name}\n# {title}\n"
             newsletter += analysis
             
             logger.info("Newsletter formatting complete")
@@ -159,18 +152,15 @@ class PodcastAnalyzer:
     def process_podcast(
         self,
         audio_path: str,
-        podcast_name: str,
-        podcast_description: Optional[str] = None,
-        episode_name: Optional[str] = None,
-        output_path: Optional[str] = None
+        name: str,
+        prompt_addition: Optional[str] = None,
+        title: Optional[str] = None,
     ) -> str:
-        """Process a podcast from audio to saved newsletter."""
-        # If no description provided, try to get it from PODCAST_DESCRIPTIONS
-        if podcast_description is None:
-            podcast_description = PODCAST_DESCRIPTIONS.get(podcast_name, "")
-            if not podcast_description:
-                logger.warning(f"No description found for podcast: {podcast_name}")
+        """Process a podcast from audio to newsletter text."""
+        description = PODCAST_DESCRIPTIONS.get(name)
+        if not description:
+            logger.warning(f"No description found for podcast: {name}")
+            prompt_addition = ""
         
-        analysis = self.analyze_audio(audio_path, podcast_name, podcast_description)
-        newsletter = self.format_newsletter(analysis, podcast_name, episode_name)
-        return self.save_newsletter(newsletter, output_path)
+        analysis = self.analyze_audio(audio_path, name=name, prompt_addition=prompt_addition)
+        return self.format_newsletter(analysis, name, title)

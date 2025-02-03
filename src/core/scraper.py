@@ -1,24 +1,14 @@
-import requests
 import logging
-from datetime import datetime
-from lxml import etree
 import uuid
-from typing import Dict, List, Optional
-from dataclasses import dataclass
+from datetime import datetime
+from typing import Dict, List
+
 import pytz
+import requests
+from lxml import etree
+from src.database.models import Podcasts
 
 logger = logging.getLogger(__name__)
-
-@dataclass
-class Podcast:
-    id: str
-    podcast_name: str
-    rss_url: str
-    publisher: Optional[str] = None
-    description: Optional[str] = None
-    image_url: Optional[str] = None
-    frequency: Optional[str] = None
-    tags: Optional[List[str]] = None
 
 class RSSParsingError(Exception):
     """Raised when there's an error parsing the RSS feed"""
@@ -52,19 +42,19 @@ def parse_datetime(date_str: str) -> datetime:
         logger.warning(f"Failed to parse date {date_str}: {e}")
         return datetime.now(pytz.UTC)
 
-def get_recent_episodes(podcast: Podcast, limit: int = 5) -> Dict:
+def get_recent_episodes(podcast: Podcasts, limit: int = 5) -> Dict:
     """
     Fetch and parse the RSS feed for a podcast, returning the most recent episodes.
     
     Args:
-        podcast: PodcastRow object containing podcast metadata
+        podcast: Podcasts model instance containing podcast metadata
         limit: Number of most recent episodes to return
     
     Returns:
         Dict containing list of episode objects
     """
     try:
-        logger.info(f"Fetching RSS feed for {podcast.podcast_name} from {podcast.rss_url}")
+        logger.info(f"Scraping RSS feed for {podcast.name} from {podcast.rss_url}")
         
         # Fetch RSS feed
         response = requests.get(podcast.rss_url, timeout=30)
@@ -125,9 +115,9 @@ def get_recent_episodes(podcast: Podcast, limit: int = 5) -> Dict:
                 episode = {
                     "id": str(uuid.uuid4()),
                     "podcast_id": podcast.id,
-                    "podcast_name": podcast.podcast_name,
+                    "name": podcast.name,
                     "rss_guid": rss_guid,
-                    "episode_name": item.findtext('title', '').strip(),
+                    "title": item.findtext('title', '').strip(),
                     "publish_date": publish_date.isoformat(),
                     "summary": "",  # To be generated later
                     "created_at": datetime.now(pytz.UTC).isoformat(),
@@ -158,9 +148,9 @@ if __name__ == "__main__":
     podcasts_df = pd.read_csv('podcasts.csv')
     
     for index, row in podcasts_df.iterrows():
-        podcast = Podcast(
+        podcast = Podcasts(
             id=row['id'] if pd.notna(row['id']) else str(uuid.uuid4()),
-            podcast_name=row['name'],
+            name=row['name'],
             rss_url=row['rss_url'],
             publisher=row['publisher'],
             description=row['description'],
