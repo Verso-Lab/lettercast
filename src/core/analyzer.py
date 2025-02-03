@@ -114,6 +114,7 @@ class PodcastAnalyzer:
             
             # Step 2: Generate newsletter
             logger.info("Step 2: Generating newsletter from insights and audio...")
+            logger.info(f"Using episode description: {episode_description[:50]}..." if episode_description else "No episode description detected")
             
             # Select appropriate prompt based on podcast category
             if category == 'interview':
@@ -208,7 +209,7 @@ class PodcastAnalyzer:
             title: Title of the specific episode
             category: Category of the podcast
             publish_date: Publication date of the episode
-            prompt_addition: Additional context about the podcast (e.g. description), defaults to empty string
+            prompt_addition: Custom podcast context, defaults to empty string
             episode_description: Description of the specific episode, defaults to empty string
             
         Returns:
@@ -228,7 +229,9 @@ class PodcastAnalyzer:
                 raise AnalyzerError("Podcast category cannot be empty")
             
             if not prompt_addition:
-                logger.warning(f"No description found for podcast: {name}")
+                logger.warning(f"No prompt addition found for podcast: {name}")
+            if not episode_description:
+                logger.warning(f"No episode description found for podcast: {name}")
             
             analysis = self.analyze_audio(
                 audio_path, 
