@@ -137,7 +137,7 @@ def get_recent_episodes(podcast: Podcasts, limit: int | None = None) -> Dict:
                     "created_at": datetime.now(pytz.UTC).isoformat(),
                     "url": audio_url,
                     "episode_description": (
-                        item.find('content:encoded', namespaces).text or 
+                        (item.find('content:encoded', namespaces).text if item.find('content:encoded', namespaces) is not None else None) or 
                         item.findtext('description', '').strip()
                     )
                 }
