@@ -163,8 +163,6 @@ class PodcastAnalyzer:
                 raise AnalyzerError("Podcast name cannot be empty")
             if not title:
                 raise AnalyzerError("Episode title cannot be empty")
-            if not publish_date:
-                raise AnalyzerError("Publish date cannot be empty")
             
             date_str = publish_date.strftime("%B %d, %Y")
             newsletter = f"{date_str} | {name}\n# {title}\n"
@@ -228,8 +226,6 @@ class PodcastAnalyzer:
                 raise AnalyzerError("Episode title cannot be empty")
             if not category:
                 raise AnalyzerError("Podcast category cannot be empty")
-            if not publish_date:
-                raise AnalyzerError("Publish date cannot be empty")
             
             if not prompt_addition:
                 logger.warning(f"No description found for podcast: {name}")
