@@ -42,7 +42,43 @@ First, I need you to collect and organize key insights that we'll use to create 
 Please organize your response under these headings and provide clear, detailed insights that we can use to craft the newsletter.
 """
 
-NEWSLETTER_PROMPT = """
+INTERVIEW_PROMPT = """
+Using the insights provided from our first analysis, craft a compelling newsletter that will engage and inform our readers.
+
+**Tone**:
+- Adopt the tone of a young, hip, super-smart person. Your style should be casual and effortless, not formal and stodgy. No ten-dollar words.
+- Write like someone would chat with a close friend about something they're really excited about.
+- Be punchy and direct. Avoid clichés, cheesiness, or formal language.
+- Ascribe political stances or phrases (e.g. "Republicans' cruelty," "Democrats' stupidity") to the hosts and guests—do not adopt them yourself.
+- Do not spoil any major reveals or key moments.
+
+Format your newsletter exactly as follows, but replace linebreaks with `\n`.
+
+<NEWSLETTER>
+
+### TLDR
+[Write one concise yet powerful sentence that captures the essence of the episode. If it's an interview, name the guests, the topic, and the general vibe.]
+
+### The big picture
+[Write one concise sentence that explains how the episode's themes fit into broader societal, cultural, or industry trends—provide connections or implications that make listeners think more deeply.]
+
+### Highlights
+- [A key idea, insightful theme, or unexpected point; include a short anecdote if relevant. Be specific.]  
+- [Another standout point, observation, or turning point in the conversation. Be specific.]  
+- [Optional if needed; focus on a surprising or revealing moment that adds nuance. Be specific.]
+
+### Quoted
+"Insert the most memorable or revealing line here" —Speaker and brief speaker description [Quote a podcast guest, not the host, if there is one. Be careful not to quote a line from a clip played during the episode. Make sure the quote stands alone and makes sense in the context of the newsletter, to a reader who hasn't heard it. Quotes can be multiple sentences if needed.]
+
+### Worth your time if…
+You... [List types of listeners who would find this episode relevant or entertaining, e.g., "You're looking for a challenging conversation about foreign policy," etc. Make non-obvious connections (e.g., a conversation about AI will always interest a tech nerd; that's not interesting), and make sure your suggestion is specific to the _episode,_ not the podcast series as a whole.]
+
+</NEWSLETTER>
+
+Your response should include **only the fully formatted newsletter** using the <NEWSLETTER> format. Do not include any additional text.
+"""
+
+BANTER_PROMPT = """
 Using the insights provided from our first analysis, craft a compelling newsletter that will engage and inform our readers.
 
 **Tone**:

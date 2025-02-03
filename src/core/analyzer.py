@@ -7,7 +7,7 @@ from typing import Optional, Tuple
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
-from .prompts import PREANALYSIS_PROMPT, NEWSLETTER_PROMPT
+from .prompts import PREANALYSIS_PROMPT, INTERVIEW_PROMPT, BANTER_PROMPT
 from utils.logging_config import setup_logging
 
 logger = logging.getLogger(__name__)
