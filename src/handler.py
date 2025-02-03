@@ -9,10 +9,11 @@ from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core import PodcastAnalyzer, download_audio, transform_audio
-from core.scraper import Podcast, get_recent_episodes
+from core.scraper import get_recent_episodes
 from src.database import crud
 from src.database.config import AsyncSessionLocal
 from utils.logging_config import setup_logging
+from src.database.models import Podcasts
 
 logger = logging.getLogger(__name__)
 
@@ -30,19 +31,6 @@ def cleanup_files(downloaded_file, transformed_audio, context, result_path):
     # Cleanup result file if Lambda context
     if context is not None and result_path and os.path.exists(result_path):
         os.unlink(result_path)
-
-def dict_to_podcast(podcast_dict: Dict) -> Podcast:
-    """Convert a database dictionary to a Podcast object"""
-    return Podcast(
-        id=podcast_dict['id'],
-        name=podcast_dict['name'],
-        rss_url=podcast_dict['rss_url'],
-        publisher=podcast_dict.get('publisher'),
-        description=podcast_dict.get('description'),
-        image_url=podcast_dict.get('image_url'),
-        frequency=podcast_dict.get('frequency'),
-        tags=podcast_dict.get('tags')
-    )
 
 async def load_podcasts(db: AsyncSession) -> List[Dict]:
     """Load all podcasts from database"""
@@ -101,7 +89,7 @@ async def process_episode(db: AsyncSession, podcast: Dict, episode: Dict, api_ke
         newsletter = analyzer.process_podcast(
             audio_path=transformed_audio,
             name=podcast['name'],
-            description=podcast['description'],
+            prompt_addition=podcast['prompt_addition'],
             title=episode['title']
         )
         
@@ -167,8 +155,11 @@ async def lambda_handler(event=None, context=None):
                 try:
                     logger.info(f"Checking for new episodes: {podcast_dict['name']}")
                     
-                    # Convert dictionary to Podcast object for scraper
-                    podcast = dict_to_podcast(podcast_dict)
+                    # Convert dictionary to Podcasts model for scraper
+                    podcast = Podcasts(**{
+                        k: v for k, v in podcast_dict.items() 
+                        if not k.startswith('_')
+                    })
                     
                     # Get episodes from RSS
                     rss_episodes = get_recent_episodes(podcast)['episodes']

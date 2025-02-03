@@ -4,28 +4,28 @@ from sqlalchemy.orm import selectinload
 from datetime import datetime
 import pytz
 from typing import Optional, List, Dict
-from src.database.models import Podcast, Episode
+from src.database.models import Podcasts, Episodes
 
 # Podcast Operations
-async def get_podcast_by_id(db: AsyncSession, podcast_id: str, load_episodes: bool = False) -> Optional[Podcast]:
+async def get_podcast_by_id(db: AsyncSession, podcast_id: str, load_episodes: bool = False) -> Optional[Podcasts]:
     """Get a podcast by its ID with optional episode loading"""
-    query = select(Podcast)
+    query = select(Podcasts)
     if load_episodes:
-        query = query.options(selectinload(Podcast.episodes))
-    query = query.where(Podcast.id == podcast_id)
+        query = query.options(selectinload(Podcasts.episodes))
+    query = query.where(Podcasts.id == podcast_id)
     result = await db.execute(query)
     return result.scalar_one_or_none()
 
-async def get_podcast_by_rss_url(db: AsyncSession, rss_url: str) -> Optional[Podcast]:
+async def get_podcast_by_rss_url(db: AsyncSession, rss_url: str) -> Optional[Podcasts]:
     """Get a podcast by its RSS URL"""
     result = await db.execute(
-        select(Podcast).where(Podcast.rss_url == rss_url)
+        select(Podcasts).where(Podcasts.rss_url == rss_url)
     )
     return result.scalar_one_or_none()
 
-async def create_podcast(db: AsyncSession, data: Dict) -> Podcast:
+async def create_podcast(db: AsyncSession, data: Dict) -> Podcasts:
     """Create a new podcast"""
-    podcast = Podcast(**data)
+    podcast = Podcasts(**data)
     db.add(podcast)
     return podcast
 
@@ -36,11 +36,11 @@ async def list_podcasts(
     offset: int = 0
 ) -> List[Dict]:
     """List podcasts with optional episode count"""
-    query = select(Podcast)
+    query = select(Podcasts)
     if with_episode_count:
         query = query.add_columns(
-            func.count(Episode.id).label('episode_count')
-        ).outerjoin(Episode).group_by(Podcast.id)
+            func.count(Episodes.id).label('episode_count')
+        ).outerjoin(Episodes).group_by(Podcasts.id)
     
     query = query.limit(limit).offset(offset)
     result = await db.execute(query)
@@ -53,25 +53,25 @@ async def list_podcasts(
     return [podcast.__dict__ for podcast in result.scalars().all()]
 
 # Episode Operations
-async def get_episode_by_id(db: AsyncSession, episode_id: str, load_podcast: bool = False) -> Optional[Episode]:
+async def get_episode_by_id(db: AsyncSession, episode_id: str, load_podcast: bool = False) -> Optional[Episodes]:
     """Get an episode by its ID"""
-    query = select(Episode)
+    query = select(Episodes)
     if load_podcast:
-        query = query.options(selectinload(Episode.podcast))
-    query = query.where(Episode.id == episode_id)
+        query = query.options(selectinload(Episodes.podcast))
+    query = query.where(Episodes.id == episode_id)
     result = await db.execute(query)
     return result.scalar_one_or_none()
 
-async def get_episode_by_guid(db: AsyncSession, rss_guid: str) -> Optional[Episode]:
+async def get_episode_by_guid(db: AsyncSession, rss_guid: str) -> Optional[Episodes]:
     """Get an episode by its RSS GUID"""
     result = await db.execute(
-        select(Episode).where(Episode.rss_guid == rss_guid)
+        select(Episodes).where(Episodes.rss_guid == rss_guid)
     )
     return result.scalar_one_or_none()
 
-async def create_episode(db: AsyncSession, data: Dict) -> Episode:
+async def create_episode(db: AsyncSession, data: Dict) -> Episodes:
     """Create a new episode"""
-    episode = Episode(**data)
+    episode = Episodes(**data)
     db.add(episode)
     return episode
 
@@ -80,12 +80,12 @@ async def get_podcast_episodes(
     podcast_id: str,
     limit: int = 100,
     offset: int = 0
-) -> List[Episode]:
+) -> List[Episodes]:
     """Get episodes for a specific podcast"""
     result = await db.execute(
-        select(Episode)
-        .where(Episode.podcast_id == podcast_id)
-        .order_by(Episode.publish_date.desc())
+        select(Episodes)
+        .where(Episodes.podcast_id == podcast_id)
+        .order_by(Episodes.publish_date.desc())
         .limit(limit)
         .offset(offset)
     )
@@ -95,11 +95,11 @@ async def get_recent_episodes(
     db: AsyncSession,
     limit: int = 20,
     load_podcast: bool = True
-) -> List[Episode]:
+) -> List[Episodes]:
     """Get recent episodes across all podcasts"""
-    query = select(Episode).order_by(Episode.publish_date.desc()).limit(limit)
+    query = select(Episodes).order_by(Episodes.publish_date.desc()).limit(limit)
     if load_podcast:
-        query = query.options(selectinload(Episode.podcast))
+        query = query.options(selectinload(Episodes.podcast))
     result = await db.execute(query)
     return result.scalars().all()
 
@@ -107,11 +107,11 @@ async def get_unprocessed_episodes(
     db: AsyncSession,
     limit: int = 100,
     load_podcast: bool = False
-) -> List[Episode]:
+) -> List[Episodes]:
     """Get episodes that haven't been processed yet (no created_at timestamp)"""
-    query = select(Episode).where(Episode.created_at.is_(None))
+    query = select(Episodes).where(Episodes.created_at.is_(None))
     if load_podcast:
-        query = query.options(selectinload(Episode.podcast))
-    query = query.order_by(Episode.publish_date.desc()).limit(limit)
+        query = query.options(selectinload(Episodes.podcast))
+    query = query.order_by(Episodes.publish_date.desc()).limit(limit)
     result = await db.execute(query)
     return result.scalars().all() 

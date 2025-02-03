@@ -91,8 +91,8 @@ class PodcastAnalyzer:
             # Step 1: Get initial insights
             logger.info("Step 1: Getting initial insights from audio...")
             formatted_prompt = PREANALYSIS_PROMPT.format(
-                podcast_name=podcast_name,
-                podcast_description=podcast_description
+                name=name,
+                prompt_addition=prompt_addition
             )
             logger.info(f"Using podcast description for analysis" if podcast_description else "No podcast description provided")
             
@@ -153,14 +153,14 @@ class PodcastAnalyzer:
         self,
         audio_path: str,
         name: str,
-        description: Optional[str] = None,
+        prompt_addition: Optional[str] = None,
         title: Optional[str] = None,
     ) -> str:
         """Process a podcast from audio to newsletter text."""
         description = PODCAST_DESCRIPTIONS.get(name)
         if not description:
             logger.warning(f"No description found for podcast: {name}")
-            description = ""
+            prompt_addition = ""
         
-        analysis = self.analyze_audio(audio_path, podcast_name=name, podcast_description=description)
+        analysis = self.analyze_audio(audio_path, name=name, prompt_addition=prompt_addition)
         return self.format_newsletter(analysis, name, title)

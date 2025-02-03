@@ -1,25 +1,14 @@
 import logging
 import uuid
-from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 import pytz
 import requests
 from lxml import etree
+from src.database.models import Podcasts
 
 logger = logging.getLogger(__name__)
-
-@dataclass
-class Podcast:
-    id: str
-    name: str
-    rss_url: str
-    publisher: Optional[str] = None
-    description: Optional[str] = None
-    image_url: Optional[str] = None
-    frequency: Optional[str] = None
-    tags: Optional[List[str]] = None
 
 class RSSParsingError(Exception):
     """Raised when there's an error parsing the RSS feed"""
@@ -53,12 +42,12 @@ def parse_datetime(date_str: str) -> datetime:
         logger.warning(f"Failed to parse date {date_str}: {e}")
         return datetime.now(pytz.UTC)
 
-def get_recent_episodes(podcast: Podcast, limit: int = 5) -> Dict:
+def get_recent_episodes(podcast: Podcasts, limit: int = 5) -> Dict:
     """
     Fetch and parse the RSS feed for a podcast, returning the most recent episodes.
     
     Args:
-        podcast: PodcastRow object containing podcast metadata
+        podcast: Podcasts model instance containing podcast metadata
         limit: Number of most recent episodes to return
     
     Returns:
@@ -159,7 +148,7 @@ if __name__ == "__main__":
     podcasts_df = pd.read_csv('podcasts.csv')
     
     for index, row in podcasts_df.iterrows():
-        podcast = Podcast(
+        podcast = Podcasts(
             id=row['id'] if pd.notna(row['id']) else str(uuid.uuid4()),
             name=row['name'],
             rss_url=row['rss_url'],

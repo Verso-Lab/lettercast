@@ -1,4 +1,4 @@
-from src.database.models import Podcast, Episode, Base
+from src.database.models import Podcasts, Episodes, Base
 from src.database.crud import (
     get_podcast_by_id,
     get_podcast_by_rss_url,
@@ -13,8 +13,8 @@ from src.database.crud import (
 from src.database.config import get_db
 
 __all__ = [
-    'Podcast',
-    'Episode',
+    'Podcasts',
+    'Episodes',
     'Base',
     'get_podcast_by_id',
     'get_podcast_by_rss_url',

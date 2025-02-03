@@ -1,49 +1,100 @@
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text, JSON, MetaData, text
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship, declarative_base
-from datetime import datetime
-import pytz
+from typing import List
 
-# Create Base with explicit naming convention
-convention = {
-    "ix": "ix_%(column_0_label)s",
-    "uq": "uq_%(table_name)s_%(column_0_name)s",
-    "ck": "ck_%(table_name)s_%(constraint_name)s",
-    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
-    "pk": "pk_%(table_name)s"
-}
+from sqlalchemy import Boolean, Column, DateTime, ForeignKeyConstraint, JSON, PrimaryKeyConstraint, Text, UniqueConstraint, Uuid, text, event
+from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm.base import Mapped
 
-metadata = MetaData(naming_convention=convention)
-Base = declarative_base(metadata=metadata)
+Base = declarative_base()
 
-class Podcast(Base):
-    __tablename__ = "podcasts"
-    __table_args__ = {'extend_existing': True}
 
-    id = Column(UUID, primary_key=True, server_default=text('gen_random_uuid()'))
-    name = Column(Text, nullable=False)
-    publisher = Column(Text)
-    description = Column(Text)
-    rss_url = Column(Text, nullable=False)
-    image_url = Column(Text)
-    created_at = Column(DateTime(timezone=True), server_default=text('CURRENT_TIMESTAMP'))
-    frequency = Column(Text)
-    tags = Column(JSON)
-    category = Column(Text)
-    prompt_addition = Column(Text)
+class Podcasts(Base):
+    __tablename__ = 'podcasts'
+    __table_args__ = (
+        PrimaryKeyConstraint('id', name='podcasts_pkey'),
+        UniqueConstraint('rss_url', name='podcasts_rss_url_key')
+    )
 
-    episodes = relationship("Episode", back_populates="podcast")
+    id = mapped_column(Uuid, server_default=text('gen_random_uuid()'))
+    name = mapped_column(Text, nullable=False)
+    rss_url = mapped_column(Text, nullable=False)
+    publisher = mapped_column(Text)
+    description = mapped_column(Text)
+    image_url = mapped_column(Text)
+    created_at = mapped_column(DateTime(True), server_default=text('CURRENT_TIMESTAMP'))
+    frequency = mapped_column(Text)
+    tags = mapped_column(JSON)
+    category = mapped_column(Text)
+    prompt_addition = mapped_column(Text)
 
-class Episode(Base):
-    __tablename__ = "episodes"
-    __table_args__ = {'extend_existing': True}
+    episodes: Mapped[List['Episodes']] = relationship('Episodes', uselist=True, back_populates='podcast')
+    subscriptions: Mapped[List['Subscriptions']] = relationship('Subscriptions', uselist=True, back_populates='podcast')
 
-    id = Column(UUID, primary_key=True, server_default=text('gen_random_uuid()'))
-    podcast_id = Column(UUID, ForeignKey("podcasts.id"), nullable=False)
-    rss_guid = Column(Text, nullable=False, unique=True)
-    title = Column(Text, nullable=False)
-    publish_date = Column(DateTime(timezone=True), nullable=False)
-    summary = Column(Text)
-    created_at = Column(DateTime(timezone=True), server_default=text('CURRENT_TIMESTAMP'))
 
-    podcast = relationship("Podcast", back_populates="episodes") 
+class Users(Base):
+    __tablename__ = 'users'
+    __table_args__ = (
+        PrimaryKeyConstraint('id', name='users_pkey'),
+        UniqueConstraint('email', name='users_email_key')
+    )
+
+    id = mapped_column(Text)
+    email = mapped_column(Text, nullable=False)
+    created_at = mapped_column(DateTime(True), server_default=text('CURRENT_TIMESTAMP'))
+
+    subscriptions: Mapped[List['Subscriptions']] = relationship('Subscriptions', uselist=True, back_populates='user')
+
+
+class Episodes(Base):
+    __tablename__ = 'episodes'
+    __table_args__ = (
+        ForeignKeyConstraint(['podcast_id'], ['podcasts.id'], ondelete='CASCADE', name='episodes_podcast_id_fkey'),
+        PrimaryKeyConstraint('id', name='episodes_pkey'),
+        UniqueConstraint('podcast_id', 'rss_guid', name='episodes_podcast_id_rss_guid_key')
+    )
+
+    id = mapped_column(Uuid, server_default=text('gen_random_uuid()'))
+    podcast_id = mapped_column(Uuid, nullable=False)
+    rss_guid = mapped_column(Text, nullable=False)
+    title = mapped_column(Text, nullable=False)
+    publish_date = mapped_column(DateTime(True), nullable=False)
+    summary = mapped_column(Text)
+    created_at = mapped_column(DateTime(True), server_default=text('CURRENT_TIMESTAMP'))
+
+    podcast: Mapped['Podcasts'] = relationship('Podcasts', back_populates='episodes')
+
+
+class Subscriptions(Base):
+    __tablename__ = 'subscriptions'
+    __table_args__ = (
+        ForeignKeyConstraint(['podcast_id'], ['podcasts.id'], ondelete='CASCADE', name='subscriptions_podcast_id_fkey'),
+        ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE', name='subscriptions_user_id_fkey'),
+        PrimaryKeyConstraint('user_id', 'podcast_id', name='subscriptions_pkey')
+    )
+
+    user_id = mapped_column(Text, nullable=False)
+    podcast_id = mapped_column(Uuid, nullable=False)
+    active = mapped_column(Boolean, nullable=False, server_default=text('true'))
+    created_at = mapped_column(DateTime(True), server_default=text('CURRENT_TIMESTAMP'))
+
+    podcast: Mapped['Podcasts'] = relationship('Podcasts', back_populates='subscriptions')
+    user: Mapped['Users'] = relationship('Users', back_populates='subscriptions')
+
+@event.listens_for(Episodes, 'init')
+def init_summary(target, args, kwargs):
+    """Initialize summary with decoded newlines"""
+    if 'summary' in kwargs and kwargs['summary']:
+        kwargs['summary'] = kwargs['summary'].replace('\n', '\\n')
+
+@event.listens_for(Episodes.summary, 'set')
+def encode_newlines(target, value, oldvalue, initiator):
+    """Encode newlines when setting summary"""
+    if value:
+        return value.replace('\n', '\\n')
+    return value
+
+@event.listens_for(Episodes, 'load')
+def decode_newlines(target, context):
+    """Decode newlines after loading from database"""
+    if target.summary:
+        target.summary = target.summary.replace('\\n', '\n')
