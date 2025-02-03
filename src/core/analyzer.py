@@ -137,13 +137,14 @@ class PodcastAnalyzer:
                 raise AnalyzerError(f"Analysis failed: {str(e)}") from None
             raise
     
-    def format_newsletter(self, analysis: str, name: Optional[str] = None, title: Optional[str] = None) -> str:
+    def format_newsletter(self, analysis: str, name: Optional[str] = None, title: Optional[str] = None, publish_date: Optional[datetime] = None) -> str:
         """Format analysis into a newsletter.
         
         Args:
             analysis: The analysis text from analyze_audio
             name: Name of the podcast (not episode title)
             title: Title of the specific episode
+            publish_date: Publication date of the episode
             
         Returns:
             str: Formatted newsletter text
@@ -151,8 +152,8 @@ class PodcastAnalyzer:
         try:
             logger.info("Formatting newsletter...")
             
-            today = datetime.now().strftime("%B %d, %Y")
-            newsletter = f"{today} | {name}\n# {title}\n"
+            date_str = publish_date.strftime("%B %d, %Y") if publish_date else datetime.now().strftime("%B %d, %Y")
+            newsletter = f"{date_str} | {name}\n# {title}\n"
             newsletter += analysis
             
             logger.info("Newsletter formatting complete")
@@ -184,6 +185,7 @@ class PodcastAnalyzer:
         prompt_addition: Optional[str] = None,
         title: Optional[str] = None,
         category: Optional[str] = None,
+        publish_date: Optional[datetime] = None,
     ) -> str:
         """Process a podcast from audio to newsletter text.
         
@@ -193,6 +195,7 @@ class PodcastAnalyzer:
             prompt_addition: Additional context about the podcast (e.g. description)
             title: Title of the specific episode
             category: Category of the podcast
+            publish_date: Publication date of the episode
             
         Returns:
             str: Formatted newsletter text
@@ -202,4 +205,4 @@ class PodcastAnalyzer:
             prompt_addition = ""
         
         analysis = self.analyze_audio(audio_path, name=name, category=category, prompt_addition=prompt_addition)
-        return self.format_newsletter(analysis, name, title)
+        return self.format_newsletter(analysis, name, title, publish_date)

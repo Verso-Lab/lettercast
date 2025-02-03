@@ -86,12 +86,14 @@ async def process_episode(db: AsyncSession, podcast: Dict, episode: Dict, api_ke
         
         # Process podcast
         logger.info(f"Processing episode: {episode['title']}")
+        publish_date = datetime.fromisoformat(episode['publish_date']) if isinstance(episode['publish_date'], str) else episode['publish_date']
         newsletter = analyzer.process_podcast(
             audio_path=transformed_audio,
             name=podcast['name'],
             prompt_addition=podcast['prompt_addition'],
             title=episode['title'],
-            category=podcast['category']
+            category=podcast['category'],
+            publish_date=publish_date
         )
         
         # Create episode in database with newsletter as summary
