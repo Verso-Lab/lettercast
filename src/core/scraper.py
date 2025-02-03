@@ -6,7 +6,7 @@ from typing import Dict, List
 import pytz
 import requests
 from lxml import etree
-from src.database.models import Podcasts
+from src.database.models import Podcast
 
 logger = logging.getLogger(__name__)
 
@@ -42,12 +42,12 @@ def parse_datetime(date_str: str) -> datetime:
         logger.warning(f"Failed to parse date {date_str}: {e}")
         return datetime.now(pytz.UTC)
 
-def get_recent_episodes(podcast: Podcasts, limit: int = 5) -> Dict:
+def get_recent_episodes(podcast: Podcast, limit: int = 5) -> Dict:
     """
     Fetch and parse the RSS feed for a podcast, returning the most recent episodes.
     
     Args:
-        podcast: Podcasts model instance containing podcast metadata
+        podcast: Podcast model instance containing podcast metadata
         limit: Number of most recent episodes to return
     
     Returns:
@@ -148,7 +148,7 @@ if __name__ == "__main__":
     podcasts_df = pd.read_csv('podcasts.csv')
     
     for index, row in podcasts_df.iterrows():
-        podcast = Podcasts(
+        podcast = Podcast(
             id=row['id'] if pd.notna(row['id']) else str(uuid.uuid4()),
             name=row['name'],
             rss_url=row['rss_url'],
