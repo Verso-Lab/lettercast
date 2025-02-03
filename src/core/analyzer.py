@@ -7,7 +7,7 @@ from typing import Optional, Tuple
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
-from .prompts import PODCAST_DESCRIPTIONS, PREANALYSIS_PROMPT, NEWSLETTER_PROMPT
+from .prompts import PREANALYSIS_PROMPT, NEWSLETTER_PROMPT
 from utils.logging_config import setup_logging
 
 logger = logging.getLogger(__name__)
@@ -68,8 +68,17 @@ class PodcastAnalyzer:
         if missing:
             logger.warning(f"Analysis missing required sections: {', '.join(missing)}")
     
-    def analyze_audio(self, audio_path: str, podcast_name: str, podcast_description: str) -> str:
-        """Analyze a podcast episode and return detailed analysis."""
+    def analyze_audio(self, audio_path: str, name: str, prompt_addition: str) -> str:
+        """Analyze a podcast episode and return detailed analysis.
+        
+        Args:
+            audio_path: Path to the audio file to analyze
+            name: Name of the podcast (not episode title)
+            prompt_addition: Additional context about the podcast (e.g. description)
+            
+        Returns:
+            str: Detailed analysis text
+        """
         logger.info(f"Starting analysis for: {audio_path}")
         start_time = time.time()
         
@@ -94,7 +103,7 @@ class PodcastAnalyzer:
                 name=name,
                 prompt_addition=prompt_addition
             )
-            logger.info(f"Using podcast description for analysis" if podcast_description else "No podcast description provided")
+            logger.info(f"Using prompt addition for analysis: {prompt_addition[:50]}..." if prompt_addition else "No prompt addition detected")
             
             insights = self.model.generate_content(
                 [formatted_prompt, audio_file],
@@ -119,7 +128,16 @@ class PodcastAnalyzer:
             raise
     
     def format_newsletter(self, analysis: str, name: Optional[str] = None, title: Optional[str] = None) -> str:
-        """Format analysis into a newsletter."""
+        """Format analysis into a newsletter.
+        
+        Args:
+            analysis: The analysis text from analyze_audio
+            name: Name of the podcast (not episode title)
+            title: Title of the specific episode
+            
+        Returns:
+            str: Formatted newsletter text
+        """
         try:
             logger.info("Formatting newsletter...")
             
@@ -156,9 +174,18 @@ class PodcastAnalyzer:
         prompt_addition: Optional[str] = None,
         title: Optional[str] = None,
     ) -> str:
-        """Process a podcast from audio to newsletter text."""
-        description = PODCAST_DESCRIPTIONS.get(name)
-        if not description:
+        """Process a podcast from audio to newsletter text.
+        
+        Args:
+            audio_path: Path to the audio file to analyze
+            name: Name of the podcast (not episode title)
+            prompt_addition: Additional context about the podcast (e.g. description)
+            title: Title of the specific episode
+            
+        Returns:
+            str: Formatted newsletter text
+        """
+        if not prompt_addition:
             logger.warning(f"No description found for podcast: {name}")
             prompt_addition = ""
         
