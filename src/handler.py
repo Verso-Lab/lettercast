@@ -73,6 +73,18 @@ async def process_episode(db: AsyncSession, podcast: Dict, episode: Dict, api_ke
     transformed_audio = None
     
     try:
+        # Validate required fields
+        required_podcast_fields = ['id', 'name', 'category', 'prompt_addition']
+        required_episode_fields = ['id', 'title', 'url', 'publish_date', 'rss_guid']
+        
+        missing_podcast_fields = [field for field in required_podcast_fields if not podcast.get(field)]
+        if missing_podcast_fields:
+            raise ValueError(f"Missing required podcast fields: {', '.join(missing_podcast_fields)}")
+            
+        missing_episode_fields = [field for field in required_episode_fields if not episode.get(field)]
+        if missing_episode_fields:
+            raise ValueError(f"Missing required episode fields: {', '.join(missing_episode_fields)}")
+        
         # Download audio file
         logger.info(f"Downloading episode: {episode['title']} from {podcast['name']} ({podcast['category']})")
         downloaded_file = download_audio(episode['url'])
@@ -87,13 +99,14 @@ async def process_episode(db: AsyncSession, podcast: Dict, episode: Dict, api_ke
         # Process podcast
         logger.info(f"Processing episode: {episode['title']}")
         publish_date = datetime.fromisoformat(episode['publish_date']) if isinstance(episode['publish_date'], str) else episode['publish_date']
+        
         newsletter = analyzer.process_podcast(
             audio_path=transformed_audio,
             name=podcast['name'],
-            prompt_addition=podcast['prompt_addition'],
             title=episode['title'],
             category=podcast['category'],
-            publish_date=publish_date
+            publish_date=publish_date,
+            prompt_addition=podcast['prompt_addition']
         )
         
         # Create episode in database with newsletter as summary

@@ -3,6 +3,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple
+import os
 
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
@@ -137,7 +138,7 @@ class PodcastAnalyzer:
                 raise AnalyzerError(f"Analysis failed: {str(e)}") from None
             raise
     
-    def format_newsletter(self, analysis: str, name: Optional[str] = None, title: Optional[str] = None, publish_date: Optional[datetime] = None) -> str:
+    def format_newsletter(self, analysis: str, name: str, title: str, publish_date: datetime) -> str:
         """Format analysis into a newsletter.
         
         Args:
@@ -148,11 +149,23 @@ class PodcastAnalyzer:
             
         Returns:
             str: Formatted newsletter text
+            
+        Raises:
+            AnalyzerError: If any required parameters are missing or invalid
         """
         try:
             logger.info("Formatting newsletter...")
             
-            date_str = publish_date.strftime("%B %d, %Y") if publish_date else datetime.now().strftime("%B %d, %Y")
+            if not analysis:
+                raise AnalyzerError("Analysis text cannot be empty")
+            if not name:
+                raise AnalyzerError("Podcast name cannot be empty")
+            if not title:
+                raise AnalyzerError("Episode title cannot be empty")
+            if not publish_date:
+                raise AnalyzerError("Publish date cannot be empty")
+            
+            date_str = publish_date.strftime("%B %d, %Y")
             newsletter = f"{date_str} | {name}\n# {title}\n"
             newsletter += analysis
             
@@ -182,27 +195,47 @@ class PodcastAnalyzer:
         self,
         audio_path: str,
         name: str,
-        prompt_addition: Optional[str] = None,
-        title: Optional[str] = None,
-        category: Optional[str] = None,
-        publish_date: Optional[datetime] = None,
+        title: str,
+        category: str,
+        publish_date: datetime,
+        prompt_addition: str = "",
     ) -> str:
         """Process a podcast from audio to newsletter text.
         
         Args:
             audio_path: Path to the audio file to analyze
-            name: Name of the podcast (not episode title)
-            prompt_addition: Additional context about the podcast (e.g. description)
+            name: Name of the podcast
             title: Title of the specific episode
             category: Category of the podcast
             publish_date: Publication date of the episode
+            prompt_addition: Additional context about the podcast (e.g. description), defaults to empty string
             
         Returns:
             str: Formatted newsletter text
+            
+        Raises:
+            AnalyzerError: If any required parameters are missing or invalid
         """
-        if not prompt_addition:
-            logger.warning(f"No description found for podcast: {name}")
-            prompt_addition = ""
-        
-        analysis = self.analyze_audio(audio_path, name=name, category=category, prompt_addition=prompt_addition)
-        return self.format_newsletter(analysis, name, title, publish_date)
+        try:
+            if not os.path.exists(audio_path):
+                raise AnalyzerError(f"Audio file not found: {audio_path}")
+            if not name:
+                raise AnalyzerError("Podcast name cannot be empty")
+            if not title:
+                raise AnalyzerError("Episode title cannot be empty")
+            if not category:
+                raise AnalyzerError("Podcast category cannot be empty")
+            if not publish_date:
+                raise AnalyzerError("Publish date cannot be empty")
+            
+            if not prompt_addition:
+                logger.warning(f"No description found for podcast: {name}")
+            
+            analysis = self.analyze_audio(audio_path, name=name, category=category, prompt_addition=prompt_addition)
+            return self.format_newsletter(analysis, name, title, publish_date)
+            
+        except Exception as e:
+            if not isinstance(e, AnalyzerError):
+                logger.error(f"Failed to process podcast: {str(e)}", exc_info=True)
+                raise AnalyzerError(f"Failed to process podcast: {str(e)}") from None
+            raise
