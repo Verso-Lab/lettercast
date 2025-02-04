@@ -44,18 +44,30 @@ class PodcastAnalyzer:
         logger.info("Gemini API configured successfully")
         
         # Configure model parameters
-        generation_config = {
-            "temperature": 1,
+        preanalysis_config = {
+            "temperature": 0.5,
             "top_p": 0.95,
             "top_k": 40,
             "max_output_tokens": 8192,
         }
         
-        self.model = genai.GenerativeModel(
-            model_name="gemini-2.0-flash-exp",
-            generation_config=generation_config,
+        writing_config = {
+            "temperature": 0.8,
+            "top_p": 0.95,
+            "top_k": 80,
+            "max_output_tokens": 8192,
+        }
+        
+        # Initialize models for different tasks
+        self.preanalysis_model = genai.GenerativeModel(
+            model_name="gemini-2.0-flash-thinking-exp",
+            generation_config=preanalysis_config,
         )
-        logger.info("Gemini model initialized")
+        self.writing_model = genai.GenerativeModel(
+            model_name="gemini-2.0-flash-exp",
+            generation_config=writing_config,
+        )
+        logger.info("Gemini models initialized")
     
     def _get_file_hash(self, file_path: str) -> str:
         """Calculate SHA-256 hash of a file"""
@@ -98,7 +110,7 @@ class PodcastAnalyzer:
                 audio_file = genai.upload_file(audio_path)
             
             # Get initial insights from audio
-            logger.info("Getting initial insights from audio...")
+            logger.info(f"Step 1: Pre-analysis from audio using {self.preanalysis_model.model_name}...")
             formatted_prompt = PREANALYSIS_PROMPT.format(
                 name=name,
                 prompt_addition=prompt_addition
@@ -111,7 +123,7 @@ class PodcastAnalyzer:
             ).text
             
             # Generate newsletter from insights
-            logger.info("Generating newsletter from insights and audio...")
+            logger.info(f"Step 2: Writing newsletter from pre-analysis and audio using {self.writing_model.model_name}...")
             logger.info(f"Using episode description: {episode_description[:50]}..." if episode_description else "No episode description detected")
             
             # Select prompt based on podcast format
