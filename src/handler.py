@@ -6,7 +6,7 @@ from typing import Dict, List
 
 import pytz
 from dotenv import load_dotenv
-import asyncio  # <-- added for concurrency
+import asyncio
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -155,17 +155,17 @@ async def lambda_handler(event=None, context=None):
         # Default to checking last 60 minutes
         minutes = int(os.getenv('CHECK_MINUTES', '60'))
         logger.info("Processing episodes from last %d minutes", minutes)
-        
+
         async with AsyncSessionLocal() as db:
             logger.info("Loading podcasts from database...")
             podcasts = await crud.list_podcasts(db)
-            
+
         total_podcasts = len(podcasts)
         total_new_episodes = 0
         successful_processes = 0
         failed_processes = 0
         errors = []
-        
+
         # Process each podcast's new episodes concurrently
         for podcast in podcasts:
             try:
@@ -174,9 +174,9 @@ async def lambda_handler(event=None, context=None):
                 # Use a DB session (separately) to check which episodes are unprocessed
                 async with AsyncSessionLocal() as db:
                     unprocessed = await find_unprocessed_episodes(db, podcast, rss_episodes, minutes)
-                    
+
                 total_new_episodes += len(unprocessed)
-                
+
                 if unprocessed:
                     # Create concurrent tasks for processing each episode
                     tasks = [process_episode_concurrent(podcast, episode) for episode in unprocessed]
@@ -199,7 +199,7 @@ async def lambda_handler(event=None, context=None):
                             })
                 else:
                     logger.info("No new episodes found for podcast: %s", podcast.name)
-            
+
             except Exception as e:
                 logger.error("Error processing podcast %s: %s", podcast.name, str(e))
                 failed_processes += 1
@@ -208,7 +208,7 @@ async def lambda_handler(event=None, context=None):
                     'error': str(e)
                 })
                 continue
-        
+
         summary = {
             'time_window_minutes': minutes,
             'total_podcasts_checked': total_podcasts,
@@ -217,17 +217,17 @@ async def lambda_handler(event=None, context=None):
             'failed_processes': failed_processes,
             'run_timestamp': datetime.now(pytz.UTC).isoformat()
         }
-        
+
         if errors:
             summary['errors'] = errors[:10]
             if len(errors) > 10:
                 summary['additional_errors_count'] = len(errors) - 10
-        
+
         return {
             'statusCode': 200,
             'body': json.dumps(summary, default=str)
         }
-            
+
     except Exception as e:
         logger.error("Handler failed: %s", str(e), exc_info=True)
         return {

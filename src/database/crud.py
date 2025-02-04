@@ -1,15 +1,14 @@
-from sqlmodel import select
-from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlalchemy import func
-from sqlalchemy.orm import selectinload
-from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
+import logging
+
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.orm import selectinload
 from .models import (
     Podcast, Episode, User, Subscription,
     PodcastBase, EpisodeBase, UserBase, SubscriptionBase
 )
-import logging
 
 logger = logging.getLogger(__name__)
 

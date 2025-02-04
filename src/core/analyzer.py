@@ -1,9 +1,9 @@
+import hashlib
 import logging
+import os
 import time
 from datetime import datetime
-from pathlib import Path
-from typing import Optional, Tuple
-import os
+from typing import Optional
 
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
@@ -59,7 +59,6 @@ class PodcastAnalyzer:
     
     def _get_file_hash(self, file_path: str) -> str:
         """Calculate SHA-256 hash of a file and return hex string."""
-        import hashlib
         with open(file_path, "rb") as f:
             return hashlib.sha256(f.read()).hexdigest()
     

@@ -1,11 +1,9 @@
 import asyncio
 import logging
-from datetime import datetime
 from dateutil import parser
 from statistics import mean
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
-import pytz
 import requests
 from lxml import etree
 

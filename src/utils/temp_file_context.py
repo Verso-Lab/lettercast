@@ -1,9 +1,9 @@
 import os
 from contextlib import contextmanager
-from utils.downloader import download_audio
-from utils.audio_transformer import transform_audio
-from utils.downloader import DEFAULT_CONSTRAINTS
 import copy
+
+from utils.downloader import download_audio, DEFAULT_CONSTRAINTS
+from utils.audio_transformer import transform_audio
 
 @contextmanager
 def download_audio_context(url, chunk_size=8192):

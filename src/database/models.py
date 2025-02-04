@@ -1,8 +1,7 @@
-from typing import List, Optional, Dict, Any, Literal
+from typing import List, Optional, Dict, Any
 from sqlmodel import SQLModel, Field, Relationship, JSON
 from uuid import UUID
 from sqlalchemy import text, JSON, UniqueConstraint, TIMESTAMP, TypeDecorator, String
-from sqlalchemy import event
 from datetime import datetime
 
 class NewlineString(TypeDecorator):

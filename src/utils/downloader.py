@@ -3,7 +3,6 @@ import os
 import requests
 import tempfile
 import time
-from pathlib import Path
 from tqdm import tqdm
 from typing import Dict, Optional
 from urllib.parse import urlparse
