@@ -30,7 +30,7 @@ class PodcastAnalyzer:
         HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH
     }
     
-    REQUIRED_SECTIONS = ['TLDR', 'Big picture', 'Highlights', 'Quoted', 'Worth your time if...']
+    REQUIRED_SECTIONS = ['TLDR', 'The big picture', 'Highlights', 'Quoted', 'Worth your time if']
     
     def __init__(self, api_key):
         """Initialize the analyzer with a Gemini API key"""
