@@ -7,8 +7,14 @@ from utils.audio_transformer import transform_audio
 
 @contextmanager
 def download_audio_context(url, chunk_size=8192):
-    """Context manager for downloading an audio file.
-    Uses the existing download_audio function and deletes the file upon exit.
+    """Download audio file and clean up after use.
+    
+    Args:
+        url: Audio file URL
+        chunk_size: Download chunk size in bytes
+        
+    Yields:
+        Path to downloaded file
     """
     # Create a constraints dictionary based on DEFAULT_CONSTRAINTS from downloader,
     # and override the 'chunk_size' with the provided parameter.
@@ -23,8 +29,13 @@ def download_audio_context(url, chunk_size=8192):
 
 @contextmanager
 def transform_audio_context(audio_path):
-    """Context manager for transforming an audio file.
-    Uses the existing transform_audio function and deletes the transformed file upon exit.
+    """Transform audio file and clean up after use.
+    
+    Args:
+        audio_path: Path to input audio file
+        
+    Yields:
+        Path to transformed file
     """
     file_path = transform_audio(audio_path)
     try:

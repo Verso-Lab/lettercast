@@ -24,7 +24,7 @@ async def get_podcast_by_rss_url(db: AsyncSession, rss_url: str) -> Optional[Pod
         if result is None:
             logger.warning("db.exec returned None")
             return None
-        return result.first()  # first() is not a coroutine in SQLModel
+        return result.first()
     except Exception as e:
         logger.error(f"Error in get_podcast_by_rss_url: {str(e)}", exc_info=True)
         raise
@@ -36,9 +36,9 @@ async def create_podcast(db: AsyncSession, podcast_data: PodcastBase) -> Podcast
         logger.info("Validated podcast data")
         db.add(podcast)
         logger.info("Added podcast to session")
-        await db.commit()  # Commit first to make the instance persistent
+        await db.commit()
         logger.info("Committed podcast to database")
-        await db.refresh(podcast)  # Then refresh to get any database-generated values
+        await db.refresh(podcast)
         logger.info("Refreshed podcast object")
         return podcast
     except Exception as e:
