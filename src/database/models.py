@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Literal
 from sqlmodel import SQLModel, Field, Relationship, JSON
 from uuid import UUID
 from sqlalchemy import text, JSON, UniqueConstraint

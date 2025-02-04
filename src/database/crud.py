@@ -9,21 +9,42 @@ from .models import (
     Podcast, Episode, User, Subscription,
     PodcastBase, EpisodeBase, UserBase, SubscriptionBase
 )
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Podcast Operations
 async def get_podcast_by_id(db: AsyncSession, podcast_id: UUID) -> Optional[Podcast]:
     return await db.get(Podcast, podcast_id)
 
 async def get_podcast_by_rss_url(db: AsyncSession, rss_url: str) -> Optional[Podcast]:
+    logger.info(f"Searching for podcast with RSS URL: {rss_url}")
     statement = select(Podcast).where(Podcast.rss_url == rss_url)
-    return await db.exec(statement).first()
+    try:
+        result = await db.exec(statement)
+        if result is None:
+            logger.warning("db.exec returned None")
+            return None
+        return result.first()  # first() is not a coroutine in SQLModel
+    except Exception as e:
+        logger.error(f"Error in get_podcast_by_rss_url: {str(e)}", exc_info=True)
+        raise
 
 async def create_podcast(db: AsyncSession, podcast_data: PodcastBase) -> Podcast:
-    podcast = Podcast.model_validate(podcast_data)
-    db.add(podcast)
-    await db.commit()
-    await db.refresh(podcast)
-    return podcast
+    logger.info("Starting podcast creation...")
+    try:
+        podcast = Podcast.model_validate(podcast_data)
+        logger.info("Validated podcast data")
+        db.add(podcast)
+        logger.info("Added podcast to session")
+        await db.commit()  # Commit first to make the instance persistent
+        logger.info("Committed podcast to database")
+        await db.refresh(podcast)  # Then refresh to get any database-generated values
+        logger.info("Refreshed podcast object")
+        return podcast
+    except Exception as e:
+        logger.error(f"Error in create_podcast: {str(e)}", exc_info=True)
+        raise
 
 async def list_podcasts(
     db: AsyncSession,

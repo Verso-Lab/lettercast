@@ -12,6 +12,8 @@ from lxml import etree
 from src.core.scraper import RSSParsingError
 from src.database import get_db, create_podcast, get_podcast_by_rss_url
 
+CATEGORIES = ['banter', 'interview']
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -70,24 +72,12 @@ class PodcastProcessor:
                 publisher = publisher.strip()
                 break
 
-        # Get tags/categories
-        tags = []
-        for category in channel.findall(f"{{{self.namespaces['itunes']}}}category"):
-            cat_text = category.get('text')
-            if cat_text:
-                tags.append(cat_text)
-                # Get subcategories
-                for subcat in category.findall(f"{{{self.namespaces['itunes']}}}category"):
-                    subcat_text = subcat.get('text')
-                    if subcat_text:
-                        tags.append(f"{cat_text}/{subcat_text}")
-
         return {
             "name": name,
             "description": description.strip() if description else None,
             "publisher": publisher,
             "image_url": image_url,
-            "tags": list(set(tags))  # Remove duplicates
+            "prompt_addition": None
         }
 
     def calculate_frequency(self, channel: etree.Element, max_episodes: int = 100) -> Optional[float]:
@@ -119,45 +109,67 @@ class PodcastProcessor:
         
         return round(episodes_per_week, 2) if episodes_per_week is not None else None
 
-    async def process_feed(self, rss_url: str) -> Dict:
+    def process_feed(self, rss_url: str, category: str) -> Dict:
         """Process RSS feed and return podcast data"""
+        if category not in CATEGORIES:
+            raise ValueError(f"Category must be one of: {', '.join(CATEGORIES)}")
+            
         channel = self.fetch_and_parse_rss(rss_url)
         
         # Get all metadata
         metadata = self.get_podcast_metadata(channel)
         frequency = self.calculate_frequency(channel)
         
+        # Validate required fields
+        if not metadata["name"]:
+            raise RSSParsingError("Podcast name is required but was not found in the feed")
+            
         # Combine all data
         podcast_data = {
             **metadata,
             "rss_url": rss_url,
-            "frequency": str(frequency),
+            "frequency": str(frequency) if frequency is not None else None,
+            "category": category
         }
         
         return podcast_data
 
-async def process_and_store_podcast(rss_url: str) -> Tuple[bool, str]:
+async def process_and_store_podcast(rss_url: str, category: str) -> Tuple[bool, str]:
     """Process podcast feed and store in database"""
     processor = PodcastProcessor()
+    logger.info(f"Starting to process podcast from RSS URL: {rss_url}")
     
     try:
         async with get_db() as db:
-            # Check if podcast already exists
-            existing_podcast = await get_podcast_by_rss_url(db, rss_url)
-            if existing_podcast:
-                return False, f"Podcast already exists with ID: {existing_podcast.id}"
-            
-            # Process feed and create podcast
-            podcast_data = await processor.process_feed(rss_url)
-            podcast = await create_podcast(db, podcast_data)
-            await db.commit()
-            
-            return True, f"Successfully created podcast: {podcast.name} (ID: {podcast.id})"
-    
-    except RSSParsingError as e:
-        return False, f"RSS parsing error: {str(e)}"
+            try:
+                # Check if podcast already exists
+                logger.info("Checking if podcast already exists...")
+                existing_podcast = await get_podcast_by_rss_url(db, rss_url)
+                if existing_podcast:
+                    logger.info(f"Podcast already exists with ID: {existing_podcast.id}")
+                    return False, f"Podcast already exists with ID: {existing_podcast.id}"
+                
+                # Process feed and create podcast
+                logger.info("Processing RSS feed...")
+                podcast_data = processor.process_feed(rss_url, category)
+                logger.info(f"Successfully processed RSS feed. Podcast name: {podcast_data['name']}")
+                
+                logger.info("Creating podcast in database...")
+                podcast = await create_podcast(db, podcast_data)
+                logger.info(f"Created podcast object with ID: {podcast.id}")
+                
+                return True, f"Successfully created podcast: {podcast.name} (ID: {podcast.id})"
+                
+            except RSSParsingError as e:
+                logger.error(f"RSS parsing error: {str(e)}")
+                return False, f"Failed to process RSS feed: {str(e)}"
+            except Exception as e:
+                logger.error(f"Database operation error: {str(e)}", exc_info=True)
+                await db.rollback()
+                return False, f"Failed to create podcast in database: {str(e)}"
     except Exception as e:
-        return False, f"Unexpected error: {str(e)}"
+        logger.error(f"Database connection error: {str(e)}", exc_info=True)
+        return False, f"Database connection error: {str(e)}"
 
 async def main():
     """CLI entry point"""
@@ -167,9 +179,24 @@ async def main():
     parser.add_argument('rss_url', help='URL of the podcast RSS feed')
     args = parser.parse_args()
     
-    success, message = await process_and_store_podcast(args.rss_url)
+    # Interactive category selection
+    print("\nSelect podcast category:")
+    for i, category in enumerate(CATEGORIES, 1):
+        print(f"{i}. {category}")
+    
+    while True:
+        try:
+            choice = int(input("\nEnter number (1-{0}): ".format(len(CATEGORIES))))
+            if 1 <= choice <= len(CATEGORIES):
+                category = CATEGORIES[choice - 1]
+                break
+            print(f"Please enter a number between 1 and {len(CATEGORIES)}")
+        except ValueError:
+            print("Please enter a valid number")
+    
+    success, message = await process_and_store_podcast(args.rss_url, category)
     print(message)
     return 1 if not success else 0
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())
