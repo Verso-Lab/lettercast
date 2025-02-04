@@ -1,6 +1,7 @@
 import logging
 import os
 import requests
+import sys
 import tempfile
 import time
 from tqdm import tqdm
@@ -10,8 +11,10 @@ from urllib.parse import urlparse
 from utils.logging_config import setup_logging
 
 logger = logging.getLogger(__name__)
-
 setup_logging()
+
+# Check for interactive terminal
+IS_INTERACTIVE = sys.stdout.isatty()
 
 class DownloadError(Exception):
     """Base exception for download-related errors."""
@@ -49,7 +52,7 @@ def download_audio(
                 'chunk_size': 8192,           # Buffer size
                 'temp_dir': '/tmp'            # Temp directory
             }
-        progress_bar: Show download progress
+        progress_bar: Show download progress (only in interactive CLI)
         
     Returns:
         Path to downloaded file
@@ -114,8 +117,9 @@ def download_audio(
             
             downloaded = 0
             with temp_file:
-                # Setup progress bar
-                if progress_bar:
+                # Setup progress bar if in interactive CLI
+                show_progress = progress_bar and IS_INTERACTIVE
+                if show_progress:
                     pbar = tqdm(
                         total=total_size,
                         unit='iB',
@@ -138,10 +142,10 @@ def download_audio(
                         temp_file.write(chunk)
                         downloaded += size
                         
-                        if progress_bar:
+                        if show_progress:
                             pbar.update(size)
                 
-                if progress_bar:
+                if show_progress:
                     pbar.close()
             
             logger.info(f"Download completed in {time.time() - start_time:.1f}s")
