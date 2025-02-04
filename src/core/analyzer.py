@@ -9,8 +9,6 @@ import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
 from .prompts import PREANALYSIS_PROMPT, INTERVIEW_PROMPT, BANTER_PROMPT
-from utils.downloader import download_audio
-from utils.audio_transformer import transform_audio
 from utils.logging_config import setup_logging
 
 logger = logging.getLogger(__name__)
@@ -209,10 +207,10 @@ class PodcastAnalyzer:
             audio_path: Path to the audio file to analyze
             name: Name of the podcast
             title: Title of the specific episode
-            category: Category of the podcast
+            category: Category of the podcast (e.g. 'interview' or 'banter')
             publish_date: Publication date of the episode
-            prompt_addition: Custom podcast context, defaults to empty string
-            episode_description: Description of the specific episode, defaults to empty string
+            prompt_addition: Custom podcast context (optional)
+            episode_description: Description of the specific episode (optional)
             
         Returns:
             str: Formatted newsletter text
@@ -227,9 +225,8 @@ class PodcastAnalyzer:
                 'name': name,
                 'title': title,
                 'category': category,
-                'publish_date': publish_date
+                'publish_date': publish_date,
             }
-            
             missing_params = [k for k, v in required_params.items() if not v]
             if missing_params:
                 raise AnalyzerError(f"Missing required parameters: {', '.join(missing_params)}")
@@ -237,15 +234,15 @@ class PodcastAnalyzer:
             if not os.path.exists(audio_path):
                 raise AnalyzerError(f"Audio file not found: {audio_path}")
                 
-            # Validate and normalize optional parameters
+            # Normalize optional parameters
             analysis_params = {
                 'name': name,
                 'category': category,
-                'prompt_addition': prompt_addition or "",  # Ensure empty string if None
-                'episode_description': episode_description or ""  # Ensure empty string if None
+                'prompt_addition': prompt_addition or "",
+                'episode_description': episode_description or ""
             }
             
-            # Log optional parameter status
+            # Log warnings if optional context data is missing
             if not prompt_addition:
                 logger.warning(f"No prompt addition found for podcast: {name}")
             if not episode_description:

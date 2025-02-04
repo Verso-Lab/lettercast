@@ -6,6 +6,8 @@ from typing import Dict, List
 
 import pytz
 from dotenv import load_dotenv
+import asyncio  # <-- added for concurrency
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core import PodcastAnalyzer
@@ -15,12 +17,23 @@ from core.scraper import get_recent_episodes
 from src.database import crud
 from src.database.config import AsyncSessionLocal
 from utils.logging_config import setup_logging
+# Import the new context managers for file handling
+from utils.temp_file_context import download_audio_context, transform_audio_context
 from src.database.models import Podcast
 
 logger = logging.getLogger(__name__)
 
 setup_logging()
 load_dotenv()
+
+# --- Change 1: Global Initialization for Reusable Resources ---
+API_KEY = os.getenv('GEMINI_API_KEY')
+if not API_KEY:
+    raise ValueError("GEMINI_API_KEY not found in environment variables")
+
+GLOBAL_ANALYZER = PodcastAnalyzer(API_KEY)
+
+# ------------------------------------------------------------------------------
 
 def cleanup_files(downloaded_file, transformed_audio, context, result_path):
     """Delete files if they exist; respect Lambda context constraints."""
@@ -79,75 +92,48 @@ async def find_unprocessed_episodes(db: AsyncSession, podcast: Podcast, rss_epis
     
     return unprocessed
 
-async def process_episode(db: AsyncSession, podcast: Podcast, episode: Dict, api_key: str) -> Dict:
-    """Process a single podcast episode"""
-    downloaded_file = None
-    transformed_audio = None
-    
+# --- Modified process_episode to use context managers ---
+async def process_episode(
+    db: AsyncSession, podcast: Podcast, episode: Dict
+) -> Dict:
+    """Process a single podcast episode using context managers for file handling"""
     try:
-        # Validate required fields
-        required_podcast_fields = ['id', 'name', 'category', 'prompt_addition']
-        required_episode_fields = ['id', 'title', 'url', 'publish_date', 'rss_guid']
-        
-        missing_podcast_fields = [field for field in required_podcast_fields if not getattr(podcast, field, None)]
-        if missing_podcast_fields:
-            raise ValueError(f"Missing required podcast fields: {', '.join(missing_podcast_fields)}")
-            
-        missing_episode_fields = [field for field in required_episode_fields if not episode.get(field)]
-        if missing_episode_fields:
-            raise ValueError(f"Missing required episode fields: {', '.join(missing_episode_fields)}")
-        
-        # Download audio file
-        logger.info(f"Downloading episode: {episode['publish_date']} - {podcast.name} - {episode['title']} - Category: {podcast.category}")
-        downloaded_file = download_audio(episode['url'])
-        
-        # Transform audio
-        logger.info("Transforming audio...")
-        transformed_audio = transform_audio(downloaded_file)
-        
-        # Initialize analyzer
-        analyzer = PodcastAnalyzer(api_key)
-        
-        # Process podcast
-        logger.info(f"Processing episode: {episode['title']}")
-        
-        newsletter = analyzer.process_podcast(
-            audio_path=transformed_audio,
-            name=podcast.name,
-            title=episode['title'],
-            category=podcast.category,
-            publish_date=episode['publish_date'],  # Use datetime directly
-            prompt_addition=podcast.prompt_addition,
-            episode_description=episode.get('episode_description', '')
-        )
-        
-        # Create episode in database with newsletter as summary
-        episode_data = {
-            **episode,  # Unpack all episode data (now with datetime object)
-            'podcast_id': podcast.id,  # Ensure correct podcast_id
-            'summary': newsletter  # Add the generated newsletter
-        }
-        
-        # Remove fields that aren't in the database model
-        fields_to_remove = ['id', 'name', 'url', 'created_at']
-        for field in fields_to_remove:
-            episode_data.pop(field, None)
-            
-        await crud.create_episode(db, episode_data)
-        await db.commit()
+        logger.info("Downloading episode: %s from %s", episode['title'], podcast.name)
+        with download_audio_context(episode['url']) as downloaded_file:
+            logger.info("Transforming audio...")
+            with transform_audio_context(downloaded_file) as transformed_audio:
+                logger.info("Processing episode: %s", episode['title'])
+                # Use global analyzer instead of creating a new instance
+                newsletter = GLOBAL_ANALYZER.process_podcast(
+                    audio_path=transformed_audio,
+                    name=podcast.name,
+                    title=episode['title'],
+                    category=podcast.category if hasattr(podcast, 'category') else 'interview',
+                    publish_date=datetime.fromisoformat(episode['publish_date']) if isinstance(episode['publish_date'], str) else episode['publish_date'],
+                    prompt_addition=podcast.prompt_addition,
+                    episode_description=episode.get('episode_description', "")
+                )
+                episode_data = {
+                    'podcast_id': podcast.id,
+                    'rss_guid': episode['rss_guid'],
+                    'title': episode['title'],
+                    'publish_date': datetime.fromisoformat(episode['publish_date']) if isinstance(episode['publish_date'], str) else episode['publish_date'],
+                    'summary': newsletter
+                }
+                await crud.create_episode(db, episode_data)
+                await db.commit()
 
-        result = {
-            'status': 'success',
-            'podcast_id': podcast.id,
-            'episode_id': episode['id'],
-            'title': episode['title'],
-            'newsletter': newsletter
-        }
-        logger.info(f"Episode {episode['title']} processed successfully")
-        return result
-        
+                result = {
+                    'status': 'success',
+                    'podcast_id': podcast.id,
+                    'episode_id': episode['id'],
+                    'title': episode['title'],
+                    'newsletter': newsletter
+                }
+                logger.info("Episode %s processed successfully", episode['title'])
+                return result
     except Exception as e:
-        logger.error(f"Failed to process episode {episode['id']}: {str(e)}", exc_info=True)
+        logger.error("Failed to process episode %s: %s", episode['id'], str(e), exc_info=True)
         return {
             'status': 'error',
             'podcast_id': podcast.id,
@@ -155,68 +141,73 @@ async def process_episode(db: AsyncSession, podcast: Podcast, episode: Dict, api
             'title': episode['title'],
             'error': str(e)
         }
-        
-    finally:
-        cleanup_files(downloaded_file, transformed_audio, None, None)
 
+# --- Change 2 & 10: Helper for concurrent episode processing ---
+async def process_episode_concurrent(podcast: Podcast, episode: Dict) -> Dict:
+    """Wrapper to process an episode using its own DB session."""
+    async with AsyncSessionLocal() as local_db:
+        return await process_episode(local_db, podcast, episode)
+
+# --- Modified lambda_handler to process episodes concurrently ---
 async def lambda_handler(event=None, context=None):
     """AWS Lambda handler for podcast processing. Runs every X minutes via EventBridge."""
     try:
-        # Get API key
-        api_key = os.getenv('GEMINI_API_KEY')
-        if not api_key:
-            raise ValueError("GEMINI_API_KEY not found in environment variables")
-        
         # Default to checking last 60 minutes
         minutes = int(os.getenv('CHECK_MINUTES', '60'))
-        logger.info(f"Processing episodes from last {minutes} minutes")
+        logger.info("Processing episodes from last %d minutes", minutes)
         
         async with AsyncSessionLocal() as db:
-            # Load all podcasts
             logger.info("Loading podcasts from database...")
-            podcasts = await load_podcasts(db)
+            podcasts = await crud.list_podcasts(db)
             
-            total_podcasts = len(podcasts)
-            total_new_episodes = 0
-            successful_processes = 0
-            failed_processes = 0
-            errors = []
-            
-            # Process each podcast's new episodes
-            for podcast in podcasts:
-                try:
-                    logger.info(f"Checking for new episodes: {podcast.name}")
-                    
-                    # Get episodes from RSS
-                    rss_episodes = get_recent_episodes(podcast)['episodes']
-                    # Find which ones aren't in our database and are within time window
+        total_podcasts = len(podcasts)
+        total_new_episodes = 0
+        successful_processes = 0
+        failed_processes = 0
+        errors = []
+        
+        # Process each podcast's new episodes concurrently
+        for podcast in podcasts:
+            try:
+                logger.info("Checking for new episodes: %s", podcast.name)
+                rss_episodes = get_recent_episodes(podcast)['episodes']
+                # Use a DB session (separately) to check which episodes are unprocessed
+                async with AsyncSessionLocal() as db:
                     unprocessed = await find_unprocessed_episodes(db, podcast, rss_episodes, minutes)
                     
-                    total_new_episodes += len(unprocessed)
-                    
-                    if unprocessed:
-                        for episode in unprocessed:
-                            result = await process_episode(db, podcast, episode, api_key)
-                            if result['status'] == 'success':
-                                successful_processes += 1
-                            else:
-                                failed_processes += 1
-                                errors.append({
-                                    'podcast': podcast.name,
-                                    'episode': episode['title'],
-                                    'error': result['error']
-                                })
-                    else:
-                        logger.info(f"No new episodes found for podcast: {podcast.name}")
+                total_new_episodes += len(unprocessed)
                 
-                except Exception as e:
-                    logger.error(f"Error processing podcast {podcast.name}: {str(e)}")
-                    failed_processes += 1
-                    errors.append({
-                        'podcast': podcast.name,
-                        'error': str(e)
-                    })
-                    continue
+                if unprocessed:
+                    # Create concurrent tasks for processing each episode
+                    tasks = [process_episode_concurrent(podcast, episode) for episode in unprocessed]
+                    results = await asyncio.gather(*tasks, return_exceptions=True)
+                    for result in results:
+                        if isinstance(result, Exception):
+                            failed_processes += 1
+                            errors.append({
+                                'podcast': podcast.name,
+                                'error': str(result)
+                            })
+                        elif result.get('status') == 'success':
+                            successful_processes += 1
+                        else:
+                            failed_processes += 1
+                            errors.append({
+                                'podcast': podcast.name,
+                                'episode': result.get('title', 'Unknown'),
+                                'error': result.get('error', 'Unknown error')
+                            })
+                else:
+                    logger.info("No new episodes found for podcast: %s", podcast.name)
+            
+            except Exception as e:
+                logger.error("Error processing podcast %s: %s", podcast.name, str(e))
+                failed_processes += 1
+                errors.append({
+                    'podcast': podcast.name,
+                    'error': str(e)
+                })
+                continue
         
         summary = {
             'time_window_minutes': minutes,
@@ -228,7 +219,7 @@ async def lambda_handler(event=None, context=None):
         }
         
         if errors:
-            summary['errors'] = errors[:10]  # Limit to first 10 errors to keep response size reasonable
+            summary['errors'] = errors[:10]
             if len(errors) > 10:
                 summary['additional_errors_count'] = len(errors) - 10
         
@@ -238,7 +229,7 @@ async def lambda_handler(event=None, context=None):
         }
             
     except Exception as e:
-        logger.error(f"Handler failed: {str(e)}", exc_info=True)
+        logger.error("Handler failed: %s", str(e), exc_info=True)
         return {
             'statusCode': 500,
             'body': json.dumps({
