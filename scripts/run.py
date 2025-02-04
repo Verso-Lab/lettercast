@@ -20,7 +20,6 @@ async def main():
         
         # Run batch processing
         result = await lambda_handler()
-        print(result['body'])
     except Exception as e:
         print(f"\nError: {str(e)}")
         exit(1)
