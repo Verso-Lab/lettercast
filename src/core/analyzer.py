@@ -117,7 +117,7 @@ class PodcastAnalyzer:
             )
             logger.info(f"Using prompt addition for analysis: {prompt_addition[:50]}..." if prompt_addition else "No prompt addition detected")
             
-            insights = self.model.generate_content(
+            preanalysis_response = self.preanalysis_model.generate_content(
                 [formatted_prompt, audio_file],
                 safety_settings=self.SAFETY_SETTINGS
             ).text
@@ -135,14 +135,14 @@ class PodcastAnalyzer:
                 logger.warning(f"Unknown podcast category: {category}, defaulting to interview prompt")
                 prompt = INTERVIEW_PROMPT.format(episode_description=episode_description)
                 
-            analysis = self.model.generate_content(
-                [prompt, insights, audio_file],
+            writing_response = self.writing_model.generate_content(
+                [prompt, preanalysis_response, audio_file],
                 safety_settings=self.SAFETY_SETTINGS
             ).text
             
-            self.validate_analysis(analysis)
+            self.validate_analysis(writing_response)
             logger.info(f"Analysis completed in {time.time() - start_time:.1f} seconds")
-            return analysis
+            return writing_response
                 
         except Exception as e:
             if not isinstance(e, AnalyzerError):
