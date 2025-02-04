@@ -8,7 +8,9 @@ import pytz
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core import PodcastAnalyzer, download_audio, transform_audio
+from core import PodcastAnalyzer
+from utils.downloader import download_audio
+from utils.audio_transformer import transform_audio
 from core.scraper import get_recent_episodes
 from src.database import crud
 from src.database.config import AsyncSessionLocal
