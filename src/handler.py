@@ -241,6 +241,10 @@ async def lambda_handler(event=None, context=None):
             if len(errors) > 10:
                 summary['additional_errors_count'] = len(errors) - 10
 
+        if not os.getenv('AWS_LAMBDA_FUNCTION_NAME'):
+            print("\nRun completed. Summary:")
+            print(json.dumps(summary, indent=2, default=str))
+
         return {
             'statusCode': 200,
             'body': json.dumps(summary, default=str)
