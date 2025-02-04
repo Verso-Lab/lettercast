@@ -42,4 +42,32 @@ ipykernel = "^6.29.5"
 pandas = "^2.2.3"
 psycopg2-binary = "^2.9.10"
 sqlacodegen-v2 = "^0.1.4"
+pytest-asyncio = "^0.25.3"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --cov=src --cov-report=term-missing"
+
+[tool.black]
+line-length = 88
+target-version = ["py313"]
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+check_untyped_defs = true
+
+[tool.ruff]
+select = ["E", "F", "B", "I"]
+ignore = []
+line-length = 88
+target-version = "py313"
 
