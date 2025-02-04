@@ -3,11 +3,12 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple
+import os
 
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
-from .prompts import PODCAST_DESCRIPTIONS, PREANALYSIS_PROMPT, NEWSLETTER_PROMPT
+from .prompts import PREANALYSIS_PROMPT, INTERVIEW_PROMPT, BANTER_PROMPT
 from utils.logging_config import setup_logging
 
 logger = logging.getLogger(__name__)
@@ -29,7 +30,7 @@ class PodcastAnalyzer:
         HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH
     }
     
-    REQUIRED_SECTIONS = ['TLDR', 'Big picture', 'Highlights', 'Quoted', 'Worth your time if...']
+    REQUIRED_SECTIONS = ['TLDR', 'The big picture', 'Highlights', 'Quoted', 'Worth your time if']
     
     def __init__(self, api_key):
         """Initialize the analyzer with a Gemini API key"""
@@ -68,8 +69,18 @@ class PodcastAnalyzer:
         if missing:
             logger.warning(f"Analysis missing required sections: {', '.join(missing)}")
     
-    def analyze_audio(self, audio_path: str, podcast_name: str, podcast_description: str) -> str:
-        """Analyze a podcast episode and return detailed analysis."""
+    def analyze_audio(self, audio_path: str, name: str, category: str, prompt_addition: str, episode_description: str = "") -> str:
+        """Analyze a podcast episode and return detailed analysis.
+        
+        Args:
+            audio_path: Path to the audio file to analyze
+            name: Name of the podcast (not episode title)
+            prompt_addition: Additional context about the podcast (e.g. description)
+            episode_description: Description of the specific episode
+            
+        Returns:
+            str: Detailed analysis text
+        """
         logger.info(f"Starting analysis for: {audio_path}")
         start_time = time.time()
         
@@ -94,7 +105,7 @@ class PodcastAnalyzer:
                 name=name,
                 prompt_addition=prompt_addition
             )
-            logger.info(f"Using podcast description for analysis" if podcast_description else "No podcast description provided")
+            logger.info(f"Using prompt addition for analysis: {prompt_addition[:50]}..." if prompt_addition else "No prompt addition detected")
             
             insights = self.model.generate_content(
                 [formatted_prompt, audio_file],
@@ -103,8 +114,19 @@ class PodcastAnalyzer:
             
             # Step 2: Generate newsletter
             logger.info("Step 2: Generating newsletter from insights and audio...")
+            logger.info(f"Using episode description: {episode_description[:50]}..." if episode_description else "No episode description detected")
+            
+            # Select appropriate prompt based on podcast category
+            if category == 'interview':
+                prompt = INTERVIEW_PROMPT.format(episode_description=episode_description)
+            elif category == 'banter':
+                prompt = BANTER_PROMPT.format(episode_description=episode_description)
+            else:
+                logger.warning(f"Unknown podcast category: {category}, defaulting to interview prompt")
+                prompt = INTERVIEW_PROMPT.format(episode_description=episode_description)
+                
             analysis = self.model.generate_content(
-                [NEWSLETTER_PROMPT, insights, audio_file],
+                [prompt, insights, audio_file],
                 safety_settings=self.SAFETY_SETTINGS
             ).text
             
@@ -118,13 +140,33 @@ class PodcastAnalyzer:
                 raise AnalyzerError(f"Analysis failed: {str(e)}") from None
             raise
     
-    def format_newsletter(self, analysis: str, name: Optional[str] = None, title: Optional[str] = None) -> str:
-        """Format analysis into a newsletter."""
+    def format_newsletter(self, analysis: str, name: str, title: str, publish_date: datetime) -> str:
+        """Format analysis into a newsletter.
+        
+        Args:
+            analysis: The analysis text from analyze_audio
+            name: Name of the podcast (not episode title)
+            title: Title of the specific episode
+            publish_date: Publication date of the episode
+            
+        Returns:
+            str: Formatted newsletter text
+            
+        Raises:
+            AnalyzerError: If any required parameters are missing or invalid
+        """
         try:
             logger.info("Formatting newsletter...")
             
-            today = datetime.now().strftime("%B %d, %Y")
-            newsletter = f"{today} | {name}\n# {title}\n"
+            if not analysis:
+                raise AnalyzerError("Analysis text cannot be empty")
+            if not name:
+                raise AnalyzerError("Podcast name cannot be empty")
+            if not title:
+                raise AnalyzerError("Episode title cannot be empty")
+            
+            date_str = publish_date.strftime("%B %d, %Y")
+            newsletter = f"{date_str} | {name}\n# {title}\n"
             newsletter += analysis
             
             logger.info("Newsletter formatting complete")
@@ -153,14 +195,76 @@ class PodcastAnalyzer:
         self,
         audio_path: str,
         name: str,
-        prompt_addition: Optional[str] = None,
-        title: Optional[str] = None,
+        title: str,
+        category: str,
+        publish_date: datetime,
+        prompt_addition: str = "",
+        episode_description: str = "",
     ) -> str:
-        """Process a podcast from audio to newsletter text."""
-        description = PODCAST_DESCRIPTIONS.get(name)
-        if not description:
-            logger.warning(f"No description found for podcast: {name}")
-            prompt_addition = ""
+        """Process a podcast from audio to newsletter text.
         
-        analysis = self.analyze_audio(audio_path, name=name, prompt_addition=prompt_addition)
-        return self.format_newsletter(analysis, name, title)
+        Args:
+            audio_path: Path to the audio file to analyze
+            name: Name of the podcast
+            title: Title of the specific episode
+            category: Category of the podcast
+            publish_date: Publication date of the episode
+            prompt_addition: Custom podcast context, defaults to empty string
+            episode_description: Description of the specific episode, defaults to empty string
+            
+        Returns:
+            str: Formatted newsletter text
+            
+        Raises:
+            AnalyzerError: If any required parameters are missing or invalid
+        """
+        try:
+            # Validate required parameters
+            required_params = {
+                'audio_path': audio_path,
+                'name': name,
+                'title': title,
+                'category': category,
+                'publish_date': publish_date
+            }
+            
+            missing_params = [k for k, v in required_params.items() if not v]
+            if missing_params:
+                raise AnalyzerError(f"Missing required parameters: {', '.join(missing_params)}")
+                
+            if not os.path.exists(audio_path):
+                raise AnalyzerError(f"Audio file not found: {audio_path}")
+                
+            # Validate and normalize optional parameters
+            analysis_params = {
+                'name': name,
+                'category': category,
+                'prompt_addition': prompt_addition or "",  # Ensure empty string if None
+                'episode_description': episode_description or ""  # Ensure empty string if None
+            }
+            
+            # Log optional parameter status
+            if not prompt_addition:
+                logger.warning(f"No prompt addition found for podcast: {name}")
+            if not episode_description:
+                logger.warning(f"No episode description found for podcast: {name}")
+            
+            # Get analysis using normalized parameters
+            analysis = self.analyze_audio(
+                audio_path,
+                **analysis_params
+            )
+            
+            # Format newsletter with validated parameters
+            return self.format_newsletter(
+                analysis=analysis,
+                name=name,
+                title=title,
+                publish_date=publish_date
+            )
+            
+        except Exception as e:
+            if not isinstance(e, AnalyzerError):
+                logger.error(f"Failed to process podcast: {str(e)}", exc_info=True)
+                raise AnalyzerError(f"Failed to process podcast: {str(e)}") from None
+            raise

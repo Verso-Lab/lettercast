@@ -42,17 +42,28 @@ def parse_datetime(date_str: str) -> datetime:
         logger.warning(f"Failed to parse date {date_str}: {e}")
         return datetime.now(pytz.UTC)
 
-def get_recent_episodes(podcast: Podcast, limit: int = 5) -> Dict:
+def get_recent_episodes(podcast: Podcast, limit: int | None = None) -> Dict:
     """
-    Fetch and parse the RSS feed for a podcast, returning the most recent episodes.
+    Fetch and parse the RSS feed for a podcast, returning episodes.
     
     Args:
-        podcast: Podcast model instance containing podcast metadata
-        limit: Number of most recent episodes to return
-    
+        podcast: Podcasts model instance containing podcast metadata
+        limit: Optional limit on number of episodes to return
+        
     Returns:
-        Dict containing list of episode objects
+        Dict containing episodes and metadata
+        
+    Raises:
+        RSSParsingError: If RSS feed cannot be fetched or parsed
+        ValueError: If podcast is invalid or missing required fields
     """
+    if not podcast:
+        raise ValueError("Podcast cannot be None")
+    if not podcast.rss_url:
+        raise ValueError("Podcast RSS URL cannot be empty")
+    if not podcast.name:
+        raise ValueError("Podcast name cannot be empty")
+        
     try:
         logger.info(f"Scraping RSS feed for {podcast.name} from {podcast.rss_url}")
         
@@ -61,8 +72,10 @@ def get_recent_episodes(podcast: Podcast, limit: int = 5) -> Dict:
         response.raise_for_status()
         
         # Parse XML
-        parser = etree.XMLParser(recover=True)  # Recover from errors if possible
-        root = etree.fromstring(response.content, parser=parser)
+        try:
+            root = etree.fromstring(response.content)
+        except etree.XMLSyntaxError as e:
+            raise RSSParsingError(f"Invalid XML in RSS feed: {str(e)}")
         
         # Handle different RSS namespaces
         namespaces = {
@@ -80,9 +93,10 @@ def get_recent_episodes(podcast: Podcast, limit: int = 5) -> Dict:
         if not items:
             raise RSSParsingError("No episodes found in feed")
         
-        # Process most recent episodes
+        # Process episodes (all if limit is None, otherwise up to limit)
         episodes = []
-        for item in items[:limit]:
+        items_to_process = items[:limit] if limit is not None else items
+        for item in items_to_process:
             try:
                 # Extract guid, fallback to link if no guid
                 guid = item.find('guid')
@@ -112,17 +126,28 @@ def get_recent_episodes(podcast: Podcast, limit: int = 5) -> Dict:
                     logger.warning(f"No audio URL found for episode: {item.findtext('title', '')}")
                     continue
                 
+                # Create base episode dict with required fields
                 episode = {
-                    "id": str(uuid.uuid4()),
-                    "podcast_id": podcast.id,
-                    "name": podcast.name,
-                    "rss_guid": rss_guid,
-                    "title": item.findtext('title', '').strip(),
-                    "publish_date": publish_date.isoformat(),
-                    "summary": "",  # To be generated later
-                    "created_at": datetime.now(pytz.UTC).isoformat(),
-                    "url": audio_url
+                    'rss_guid': rss_guid,
+                    'title': item.findtext('title', '').strip(),
+                    'publish_date': publish_date,  # Keep the datetime object
+                    'url': audio_url,
                 }
+
+                # Add optional fields if they exist
+                description = (
+                    (item.find('content:encoded', namespaces).text if item.find('content:encoded', namespaces) is not None else None) or 
+                    item.findtext('description', '').strip()
+                )
+                if description:
+                    episode['episode_description'] = description
+
+                # Add metadata fields needed for processing
+                episode.update({
+                    'id': str(uuid.uuid4()),  # Temporary ID for processing
+                    'podcast_id': podcast.id,
+                    'name': podcast.name,  # For processing context
+                })
                 
                 episodes.append(episode)
                 

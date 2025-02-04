@@ -1,8 +1,16 @@
 import os
 import logging
+import asyncio
 from dotenv import load_dotenv
+from datetime import datetime
+import pytz
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from core import PodcastAnalyzer, transform_audio
 from utils.logging_config import setup_logging
+from database.models import Podcast
+from database.config import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
 setup_logging()
@@ -47,7 +55,26 @@ def select_audio_file():
         except ValueError:
             print("Please enter a number.")
 
-def main():
+async def select_podcast():
+    """Select a podcast to use for metadata"""
+    async with AsyncSessionLocal() as session:
+        result = await session.exec(select(Podcast))
+        podcasts = result.scalars().all()
+        
+        print("\nWhich podcast is this episode from?:")
+        for i, podcast in enumerate(podcasts, 1):
+            print(f"{i}. {podcast.name} ({podcast.category or 'no category'})")
+        
+        while True:
+            try:
+                choice = int(input("\nSelect a podcast (1-{}): ".format(len(podcasts))))
+                if 1 <= choice <= len(podcasts):
+                    return podcasts[choice - 1]
+                print("Invalid choice. Please try again.")
+            except ValueError:
+                print("Please enter a number.")
+
+async def main():
     """Test script for analyzing local audio files with Gemini"""
     transformed_audio = None
     try:
@@ -60,6 +87,9 @@ def main():
         audio_path = select_audio_file()
         if not os.path.exists(audio_path):
             raise FileNotFoundError(f"Audio file not found: {audio_path}")
+            
+        # Select podcast for metadata
+        podcast = await select_podcast()
         
         # Transform audio for Gemini
         logger.info("Sending audio for transformation...")
@@ -70,15 +100,25 @@ def main():
         
         # Process podcast
         title = os.path.basename(audio_path)
-        output_path = f"newsletters/lettercast_{os.path.splitext(title)[0]}.md"
         
-        # Analyze and save
-        result_path = analyzer.process_podcast(
+        # Get episode description from user
+        episode_description = input("\nEnter episode description (optional, press Enter to skip): ").strip()
+        
+        # Analyze and print
+        newsletter = analyzer.process_podcast(
             audio_path=transformed_audio,
-            podcast_name="Local Audio File",  # Generic name for local files
-            episode_name=title,
-            output_path=output_path
+            name=podcast.name,
+            title=title,
+            category=podcast.category or 'interview',  # Default to interview if not set
+            publish_date=datetime.now(pytz.UTC),
+            prompt_addition=podcast.prompt_addition or '',
+            episode_description=episode_description
         )
+        
+        print("\nGenerated Newsletter:")
+        print("=" * 80)
+        print(newsletter)
+        print("=" * 80)
         
     except Exception as e:
         logger.error(f"Error: {str(e)}")
@@ -89,4 +129,4 @@ def main():
             os.unlink(transformed_audio)
 
 if __name__ == "__main__":
-    main() 
+    asyncio.run(main()) 

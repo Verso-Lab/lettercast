@@ -45,6 +45,9 @@ async def find_unprocessed_episodes(db: AsyncSession, podcast: Podcast, rss_epis
     unprocessed = []
     now = datetime.now(pytz.UTC)
     
+    episodes_in_window = 0
+    new_episodes = 0
+    
     for episode in rss_episodes:
         # Check if episode is within time window
         publish_date = episode['publish_date']
@@ -59,11 +62,18 @@ async def find_unprocessed_episodes(db: AsyncSession, podcast: Podcast, rss_epis
         time_diff = now - publish_date
         if time_diff.total_seconds() > minutes * 60:
             continue
+            
+        episodes_in_window += 1
         
         # Check if episode exists in database
         existing = await crud.get_episode_by_guid(db, episode['rss_guid'])
         if not existing:
             unprocessed.append(episode)
+            new_episodes += 1
+    
+    logger.info(
+        f"Found {episodes_in_window} episodes within {minutes} minute window for {podcast.name}, of which {new_episodes} are new"
+    )
     
     return unprocessed
 
@@ -73,8 +83,20 @@ async def process_episode(db: AsyncSession, podcast: Podcast, episode: Dict, api
     transformed_audio = None
     
     try:
+        # Validate required fields
+        required_podcast_fields = ['id', 'name', 'category', 'prompt_addition']
+        required_episode_fields = ['id', 'title', 'url', 'publish_date', 'rss_guid']
+        
+        missing_podcast_fields = [field for field in required_podcast_fields if not getattr(podcast, field, None)]
+        if missing_podcast_fields:
+            raise ValueError(f"Missing required podcast fields: {', '.join(missing_podcast_fields)}")
+            
+        missing_episode_fields = [field for field in required_episode_fields if not episode.get(field)]
+        if missing_episode_fields:
+            raise ValueError(f"Missing required episode fields: {', '.join(missing_episode_fields)}")
+        
         # Download audio file
-        logger.info(f"Downloading episode: {episode['title']} from {podcast.name}")
+        logger.info(f"Downloading episode: {episode['publish_date']} - {podcast.name} - {episode['title']} - Category: {podcast.category}")
         downloaded_file = download_audio(episode['url'])
         
         # Transform audio
@@ -86,21 +108,29 @@ async def process_episode(db: AsyncSession, podcast: Podcast, episode: Dict, api
         
         # Process podcast
         logger.info(f"Processing episode: {episode['title']}")
+        
         newsletter = analyzer.process_podcast(
             audio_path=transformed_audio,
             name=podcast.name,
+            title=episode['title'],
+            category=podcast.category,
+            publish_date=episode['publish_date'],  # Use datetime directly
             prompt_addition=podcast.prompt_addition,
-            title=episode['title']
+            episode_description=episode.get('episode_description', '')
         )
         
         # Create episode in database with newsletter as summary
         episode_data = {
-            'podcast_id': podcast.id,
-            'rss_guid': episode['rss_guid'],
-            'title': episode['title'],
-            'publish_date': datetime.fromisoformat(episode['publish_date']),
-            'summary': newsletter
+            **episode,  # Unpack all episode data (now with datetime object)
+            'podcast_id': podcast.id,  # Ensure correct podcast_id
+            'summary': newsletter  # Add the generated newsletter
         }
+        
+        # Remove fields that aren't in the database model
+        fields_to_remove = ['id', 'name', 'url', 'created_at']
+        for field in fields_to_remove:
+            episode_data.pop(field, None)
+            
         await crud.create_episode(db, episode_data)
         await db.commit()
 
