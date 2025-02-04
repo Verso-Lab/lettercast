@@ -160,24 +160,3 @@ def get_recent_episodes(podcast: Podcast, limit: int | None = None) -> Dict:
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
         raise
-
-if __name__ == "__main__":
-    import pandas as pd
-    
-    podcasts_df = pd.read_csv('podcasts.csv')
-    
-    for index, row in podcasts_df.iterrows():
-        podcast = Podcast(
-            id=row['id'] if pd.notna(row['id']) else str(uuid.uuid4()),
-            name=row['name'],
-            rss_url=row['rss_url'],
-            publisher=row['publisher'],
-            description=row['description'],
-            image_url=row['image_url'],
-            frequency=row['frequency'],
-            tags=row['tags'],
-        )
-        
-        result = get_recent_episodes(podcast)
-        print(f"Found {len(result['episodes'])} recent episodes") 
-        print(result['episodes'][0])
