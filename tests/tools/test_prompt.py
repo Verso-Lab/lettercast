@@ -7,10 +7,11 @@ import pytz
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core import PodcastAnalyzer, transform_audio
-from utils.logging_config import setup_logging
-from database.models import Podcast
-from database.config import AsyncSessionLocal
+from src.core.analyzer import PodcastAnalyzer
+from src.utils.audio_transformer import transform_audio
+from src.utils.logging_config import setup_logging
+from src.database.models import Podcast
+from src.database.config import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
 setup_logging()

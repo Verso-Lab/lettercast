@@ -12,39 +12,36 @@ logger = logging.getLogger(__name__)
 setup_logging()
 
 class AudioTransformationError(Exception):
-    """Base exception for audio transformation errors"""
+    """Base exception for audio transformation errors."""
     pass
 
 def transform_audio(audio_path: str, target_params: Dict = None) -> str:
-    """Transform audio to reduce file size and optimize for Gemini API.
+    """Optimize audio file for Gemini API processing.
     
     Args:
-        audio_path: Path to the input audio file
-        target_params: Optional dictionary of target parameters. Defaults to:
+        audio_path: Input audio file path
+        target_params: Optional parameters, defaults to:
             {
-                'channels': 1,          # Mono audio
-                'frame_rate': 16000,    # 16kHz sample rate
+                'channels': 1,          # Mono
+                'frame_rate': 16000,    # 16kHz
                 'format': 'mp3',        # Output format
-                'quality': '9'          # MP3 quality (0-9, 9 being lowest)
+                'quality': '9'          # MP3 quality (0-9)
             }
             
     Returns:
-        str: Path to the transformed audio file
-        
-    Raises:
-        AudioTransformationError: If any step of the transformation fails
+        Path to optimized audio file
     """
     try:
         start_time = time.time()
         logger.info(f"Starting audio transformation for: {audio_path}")
         
-        # Validate input file
+        # Validate input
         if not audio_path:
             raise AudioTransformationError("Audio path cannot be empty")
         if not os.path.exists(audio_path):
             raise AudioTransformationError(f"Audio file not found: {audio_path}")
             
-        # Set default parameters if none provided
+        # Set defaults
         target_params = target_params or {
             'channels': 1,
             'frame_rate': 16000,
@@ -52,12 +49,12 @@ def transform_audio(audio_path: str, target_params: Dict = None) -> str:
             'quality': '9'
         }
         
-        # Get original file size
+        # Log original size
         original_size = os.path.getsize(audio_path) / (1024 * 1024)
         logger.info(f"Original file size: {original_size:.2f} MB")
         
         try:
-            # Load audio file
+            # Load audio
             logger.info("Loading audio file...")
             audio = AudioSegment.from_file(audio_path)
             logger.info(f"Original audio: {audio.channels} channels, {audio.frame_rate}Hz")
@@ -65,7 +62,7 @@ def transform_audio(audio_path: str, target_params: Dict = None) -> str:
             raise AudioTransformationError(f"Failed to load audio file: {str(e)}")
         
         try:
-            # Apply transformations
+            # Apply optimizations
             if audio.channels != target_params['channels']:
                 audio = audio.set_channels(target_params['channels'])
                 logger.info(f"Converted to {target_params['channels']} channel(s)")
@@ -77,7 +74,7 @@ def transform_audio(audio_path: str, target_params: Dict = None) -> str:
             raise AudioTransformationError(f"Failed to process audio: {str(e)}")
         
         try:
-            # Export with target parameters
+            # Export optimized file
             with tempfile.NamedTemporaryFile(
                 suffix=f'.{target_params["format"]}',
                 delete=False

@@ -1,9 +1,9 @@
 import logging
 import os
 import requests
+import sys
 import tempfile
 import time
-from pathlib import Path
 from tqdm import tqdm
 from typing import Dict, Optional
 from urllib.parse import urlparse
@@ -11,27 +11,29 @@ from urllib.parse import urlparse
 from utils.logging_config import setup_logging
 
 logger = logging.getLogger(__name__)
-
 setup_logging()
 
+# Check for interactive terminal
+IS_INTERACTIVE = sys.stdout.isatty()
+
 class DownloadError(Exception):
-    """Base exception for download-related errors"""
+    """Base exception for download-related errors."""
     pass
 
 class FileSizeError(DownloadError):
-    """Raised when file size exceeds limits"""
+    """Raised when file size exceeds limits."""
     pass
 
 class DownloadTimeoutError(DownloadError):
-    """Raised when download exceeds time limit"""
+    """Raised when download exceeds time limit."""
     pass
 
-# Default Lambda constraints
+# Lambda execution constraints
 DEFAULT_CONSTRAINTS = {
-    'max_file_size_mb': 450,  # Leave buffer for other files
-    'max_download_seconds': 840,  # 14 minutes, leaving 1-min buffer
-    'chunk_size': 8192,
-    'temp_dir': '/tmp'  # Lambda's temp directory
+    'max_file_size_mb': 450,  # Max file size
+    'max_download_seconds': 840,  # 14 minutes
+    'chunk_size': 8192,  # Download buffer size
+    'temp_dir': '/tmp'  # Lambda temp directory
 }
 
 def download_audio(
@@ -39,33 +41,28 @@ def download_audio(
     constraints: Optional[Dict] = None,
     progress_bar: bool = True
 ) -> str:
-    """Download audio file from URL to a temporary file.
+    """Download audio file with Lambda execution constraints.
     
     Args:
-        url: URL of the audio file to download
-        constraints: Optional dictionary of constraints. Defaults to:
+        url: Audio file URL
+        constraints: Optional constraints, defaults to:
             {
-                'max_file_size_mb': 450,      # Maximum file size in MB
-                'max_download_seconds': 840,   # Maximum download time in seconds
-                'chunk_size': 8192,           # Download chunk size
-                'temp_dir': '/tmp'            # Temporary directory for downloads
+                'max_file_size_mb': 450,      # Max size in MB
+                'max_download_seconds': 840,   # Max time in seconds
+                'chunk_size': 8192,           # Buffer size
+                'temp_dir': '/tmp'            # Temp directory
             }
-        progress_bar: Whether to show progress bar, defaults to True
+        progress_bar: Show download progress (only in interactive CLI)
         
     Returns:
-        str: Path to the downloaded temporary file
-        
-    Raises:
-        DownloadError: Base class for all download-related errors
-        FileSizeError: If file size exceeds constraints
-        DownloadTimeoutError: If download exceeds time limit
+        Path to downloaded file
     """
     temp_path = None
     try:
         logger.info(f"Starting download from: {url}")
         start_time = time.time()
         
-        # Set constraints
+        # Apply constraints
         constraints = constraints or DEFAULT_CONSTRAINTS
         max_size = constraints.get('max_file_size_mb', DEFAULT_CONSTRAINTS['max_file_size_mb'])
         max_time = constraints.get('max_download_seconds', DEFAULT_CONSTRAINTS['max_download_seconds'])
@@ -77,12 +74,12 @@ def download_audio(
         if not parsed.scheme or not parsed.netloc:
             raise DownloadError(f"Invalid URL: {url}")
         
-        # Get file size
+        # Check file size
         try:
             response = requests.head(url, allow_redirects=True)
             total_size = int(response.headers.get('content-length', 0))
             
-            # If HEAD request doesn't return size, try GET with stream
+            # Try GET if HEAD fails
             if total_size == 0:
                 response = requests.get(url, stream=True, allow_redirects=True)
                 total_size = int(response.headers.get('content-length', 0))
@@ -99,7 +96,7 @@ def download_audio(
         except requests.RequestException as e:
             raise DownloadError(f"Failed to check file size: {str(e)}")
         
-        # Create temporary file
+        # Create temp file
         try:
             suffix = os.path.splitext(parsed.path)[1] or '.mp3'
             temp_file = tempfile.NamedTemporaryFile(
@@ -120,8 +117,9 @@ def download_audio(
             
             downloaded = 0
             with temp_file:
-                # Setup progress bar if requested
-                if progress_bar:
+                # Setup progress bar if in interactive CLI
+                show_progress = progress_bar and IS_INTERACTIVE
+                if show_progress:
                     pbar = tqdm(
                         total=total_size,
                         unit='iB',
@@ -131,10 +129,10 @@ def download_audio(
                         miniters=1
                     )
                 
-                # Download in chunks
+                # Download chunks
                 for chunk in response.iter_content(chunk_size=chunk_size):
                     if chunk:
-                        # Check timeout
+                        # Check time limit
                         if time.time() - start_time > max_time:
                             raise DownloadTimeoutError(
                                 f"Download exceeded {max_time}s time limit"
@@ -144,10 +142,10 @@ def download_audio(
                         temp_file.write(chunk)
                         downloaded += size
                         
-                        if progress_bar:
+                        if show_progress:
                             pbar.update(size)
                 
-                if progress_bar:
+                if show_progress:
                     pbar.close()
             
             logger.info(f"Download completed in {time.time() - start_time:.1f}s")

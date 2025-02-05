@@ -1,11 +1,9 @@
 import asyncio
 import logging
-from datetime import datetime
 from dateutil import parser
 from statistics import mean
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
-import pytz
 import requests
 from lxml import etree
 
@@ -27,7 +25,7 @@ class PodcastProcessor:
         }
 
     def fetch_and_parse_rss(self, rss_url: str) -> etree.Element:
-        """Fetch and parse RSS feed, returning the channel element"""
+        """Fetch RSS feed and return channel element."""
         try:
             response = requests.get(rss_url, timeout=30)
             response.raise_for_status()
@@ -45,13 +43,13 @@ class PodcastProcessor:
             raise RSSParsingError(f"Failed to parse RSS feed: {str(e)}")
 
     def get_podcast_metadata(self, channel: etree.Element) -> Dict:
-        """Extract all relevant podcast metadata from channel element"""
-        # Get basic metadata
+        """Extract podcast metadata from RSS channel."""
+        # Basic metadata
         name = channel.findtext('title', '').strip()
         description = channel.findtext('description', '')
         description = description or channel.findtext(f"{{{self.namespaces['itunes']}}}summary", '')
         
-        # Get image URL (try different possible elements)
+        # Image URL
         image_url = None
         image_elem = channel.find('image')
         if image_elem is not None:
@@ -59,7 +57,7 @@ class PodcastProcessor:
         if not image_url:
             image_url = channel.findtext(f"{{{self.namespaces['itunes']}}}image/[@href]")
 
-        # Get publisher (try different possible elements)
+        # Publisher
         publisher = None
         for elem in [
             f"{{{self.namespaces['itunes']}}}author",
@@ -81,7 +79,7 @@ class PodcastProcessor:
         }
 
     def calculate_frequency(self, channel: etree.Element, max_episodes: int = 100) -> Optional[float]:
-        """Calculate podcast publishing frequency as average episodes per week"""
+        """Calculate average episodes per week."""
         items = channel.findall('item')
         dates = []
         
@@ -97,34 +95,34 @@ class PodcastProcessor:
         if len(dates) < 2:
             return None
 
-        # Sort dates in descending order
+        # Sort descending
         dates.sort(reverse=True)
         
-        # Calculate average days between episodes
+        # Calculate average interval
         intervals = [(dates[i] - dates[i+1]).days for i in range(len(dates)-1)]
         avg_interval = mean(intervals)
         
-        # Convert to episodes per week (7 days / avg_interval)
+        # Convert to weekly frequency
         episodes_per_week = 7.0 / avg_interval if avg_interval > 0 else None
         
         return round(episodes_per_week, 2) if episodes_per_week is not None else None
 
     def process_feed(self, rss_url: str, category: str) -> Dict:
-        """Process RSS feed and return podcast data"""
+        """Process RSS feed and return podcast data."""
         if category not in CATEGORIES:
             raise ValueError(f"Category must be one of: {', '.join(CATEGORIES)}")
             
         channel = self.fetch_and_parse_rss(rss_url)
         
-        # Get all metadata
+        # Get metadata
         metadata = self.get_podcast_metadata(channel)
         frequency = self.calculate_frequency(channel)
         
-        # Validate required fields
+        # Validate name
         if not metadata["name"]:
             raise RSSParsingError("Podcast name is required but was not found in the feed")
             
-        # Combine all data
+        # Combine data
         podcast_data = {
             **metadata,
             "rss_url": rss_url,
@@ -135,21 +133,21 @@ class PodcastProcessor:
         return podcast_data
 
 async def process_and_store_podcast(rss_url: str, category: str) -> Tuple[bool, str]:
-    """Process podcast feed and store in database"""
+    """Process podcast feed and store in database."""
     processor = PodcastProcessor()
     logger.info(f"Starting to process podcast from RSS URL: {rss_url}")
     
     try:
         async with get_db() as db:
             try:
-                # Check if podcast already exists
+                # Check existence
                 logger.info("Checking if podcast already exists...")
                 existing_podcast = await get_podcast_by_rss_url(db, rss_url)
                 if existing_podcast:
                     logger.info(f"Podcast already exists with ID: {existing_podcast.id}")
                     return False, f"Podcast already exists with ID: {existing_podcast.id}"
                 
-                # Process feed and create podcast
+                # Process and store
                 logger.info("Processing RSS feed...")
                 podcast_data = processor.process_feed(rss_url, category)
                 logger.info(f"Successfully processed RSS feed. Podcast name: {podcast_data['name']}")
@@ -172,14 +170,14 @@ async def process_and_store_podcast(rss_url: str, category: str) -> Tuple[bool, 
         return False, f"Database connection error: {str(e)}"
 
 async def main():
-    """CLI entry point"""
+    """CLI entry point for podcast processing."""
     import argparse
     
     parser = argparse.ArgumentParser(description='Process and store a podcast from RSS feed')
     parser.add_argument('rss_url', help='URL of the podcast RSS feed')
     args = parser.parse_args()
     
-    # Interactive category selection
+    # Category selection
     print("\nSelect podcast category:")
     for i, category in enumerate(CATEGORIES, 1):
         print(f"{i}. {category}")

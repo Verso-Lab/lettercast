@@ -1,28 +1,28 @@
-from typing import List, Optional, Dict, Any, Literal
+from typing import List, Optional, Dict, Any
 from sqlmodel import SQLModel, Field, Relationship, JSON
 from uuid import UUID
 from sqlalchemy import text, JSON, UniqueConstraint, TIMESTAMP, TypeDecorator, String
-from sqlalchemy import event
 from datetime import datetime
 
 class NewlineString(TypeDecorator):
-    """Custom type that handles newline encoding/decoding automatically."""
+    """Custom type for handling newline characters in database strings."""
     impl = String
     cache_ok = True
 
     def process_bind_param(self, value, dialect):
-        """Convert newlines to escaped newlines when saving to DB."""
+        """Escape newlines when saving to database."""
         if value is not None:
             return value.replace('\n', '\\n')
         return None
 
     def process_result_value(self, value, dialect):
-        """Convert escaped newlines back to newlines when loading from DB."""
+        """Unescape newlines when loading from database."""
         if value is not None:
             return value.replace('\\n', '\n')
         return None
 
 class TimestampMixin(SQLModel):
+    """Add created_at timestamp to models."""
     created_at: Optional[datetime] = Field(
         default=None,
         sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")}

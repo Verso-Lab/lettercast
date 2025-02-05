@@ -1,9 +1,9 @@
-from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlmodel import SQLModel
-from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy.orm import sessionmaker
 from contextlib import asynccontextmanager
 import os
+
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.orm import sessionmaker
+from sqlmodel.ext.asyncio.session import AsyncSession
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -12,33 +12,34 @@ DATABASE_URL = os.getenv('DATABASE_URL')
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL must be set in environment variables")
 
-# Convert the URL to async format if needed
+# Convert SQLAlchemy URL to async format
 if DATABASE_URL.startswith('postgres://'):
     DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql+asyncpg://', 1)
 elif DATABASE_URL.startswith('postgresql://'):
     DATABASE_URL = DATABASE_URL.replace('postgresql://', 'postgresql+asyncpg://', 1)
 
-# Create engine with optimal Neon settings
+# Configure engine with Neon-optimized settings
 engine = create_async_engine(
     DATABASE_URL,
     echo=False,
-    pool_size=20,  # Neon recommends larger pool for better performance
+    pool_size=20,
     max_overflow=10,
     pool_timeout=30,
-    pool_pre_ping=True,  # Enable connection health checks
-    pool_recycle=1800,  # Recycle connections every 30 minutes
+    pool_pre_ping=True,
+    pool_recycle=1800,  # 30 minutes
 )
 
+# Configure session with safe defaults
 AsyncSessionLocal = sessionmaker(
     engine,
     class_=AsyncSession,
     expire_on_commit=False,
-    autoflush=False  # Disable autoflush to have more control over when changes are flushed
+    autoflush=False
 )
 
 @asynccontextmanager
 async def get_db():
-    """Async context manager for database sessions"""
+    """Provide async database session with automatic cleanup."""
     session = AsyncSessionLocal()
     try:
         yield session
