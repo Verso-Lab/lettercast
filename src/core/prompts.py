@@ -103,7 +103,7 @@ Here is the episode description from the podcast publisher: {episode_description
 
 {background}
 
-Format your newsletter exactly as follows:
+Format your newsletter exactly as follows. Only include the <NEWSLETTER> section:
 
 <NEWSLETTER>
 
@@ -198,7 +198,7 @@ Here's the episode description from the podcast publisher: {episode_description}
 
 {background}
 
-Format your newsletter like this:
+Format your newsletter like this. Only include the <NEWSLETTER> section:
 
 <NEWSLETTER>
 
