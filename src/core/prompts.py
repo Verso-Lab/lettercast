@@ -1,9 +1,14 @@
-"""Prompts used for generating content with the Gemini API."""
+import datetime
+
+BACKGROUND = f"""
+Today is {datetime.datetime.now().strftime("%Y-%m-%d")}. Key background facts about the world:
+- Donald Trump was elected to a second term in November 2024 and is now president.
+"""
 
 PREANALYSIS_PROMPT = """
 You are a podcast analysis assistant. I have provided you with an episode of {name}.
 
-Podcast description: {prompt_addition}
+Here's a description of the podcast and some custom instructions you should follow very closely: {prompt_addition}
 
 Analyze this episode chronologically, processing it in segments and building your insights progressively. Return only the <INSIGHTS> section:
 
@@ -81,6 +86,7 @@ Using the insights provided from our first analysis, craft a newsletter that wil
 - Be direct and specific - no clichés and hollow phrases
 - Keep it short and punchy
 - Don't insult the hosts or guests
+- Be appropriately skeptical of claims made by the hosts or guests
 
 **Examples of balanced framing**:
 GOOD: "The hosts argue that recent policy changes have harmed communities"
@@ -91,7 +97,11 @@ BAD: "Zuckerberg reveals the administration pressured Meta"
 
 ---------
 
+Here's a description of the podcast and some custom instructions you should follow very closely: {prompt_addition}
+
 Here is the episode description from the podcast publisher: {episode_description}
+
+{background}
 
 Format your newsletter exactly as follows:
 
@@ -167,21 +177,26 @@ How to write it:
 - Find the surprising turns
 - Tell us why this conversation mattered
 - Make it impossible not to share
+- Be appropriately skeptical of claims made by the hosts or guests
 
 Good vs Bad Examples:
 
-✓ "Kara Swisher and Sam Altman start fighting about OpenAI's board drama but end up finding common ground over pizza preferences"
-✗ "They engage in a nuanced discussion of corporate governance"
+GOOD: "Kara Swisher and Sam Altman start fighting about OpenAI's board drama but end up finding common ground over pizza preferences"
+BAD: "They engage in a nuanced discussion of corporate governance"
 
-✓ "The Pod Save America guys and their Republican guest go from arguing about taxes to trading stories about their worst campaign disasters"
-✗ "They reveal why one side is wrong about politics"
+GOOD: "The Pod Save America guys and their Republican guest go from arguing about taxes to trading stories about their worst campaign disasters"
+BAD: "They reveal why one side is wrong about politics"
 
-✓ "What starts as Marc Maron complaining about LA traffic turns into him and Bryan Cranston trading stories about terrible acting teachers"
-✗ "They discuss their careers in entertainment"
+GOOD: "What starts as Marc Maron complaining about LA traffic turns into him and Bryan Cranston trading stories about terrible acting teachers"
+BAD: "They discuss their careers in entertainment"
 
 ---------
 
-Here's the episode description: {episode_description}
+Here's a description of the podcast and some custom instructions you should follow very closely: {prompt_addition}
+
+Here's the episode description from the podcast publisher: {episode_description}
+
+{background}
 
 Format your newsletter like this:
 
