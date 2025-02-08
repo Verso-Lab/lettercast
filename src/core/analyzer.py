@@ -113,7 +113,8 @@ class PodcastAnalyzer:
             logger.info(f"Step 1: Pre-analysis from audio using {self.preanalysis_model.model_name}...")
             formatted_prompt = PREANALYSIS_PROMPT.format(
                 name=name,
-                prompt_addition=prompt_addition
+                prompt_addition=prompt_addition,
+                background=BACKGROUND
             )
             logger.info(f"Using prompt addition for analysis: {prompt_addition[:50]}..." if prompt_addition else "No prompt addition detected")
             
