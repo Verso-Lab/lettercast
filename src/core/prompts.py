@@ -79,7 +79,7 @@ b) Impact Analysis:
   * Specificity
   * Credibility
   * Attribution clarity
-Only include quotes scoring 4+ in all categories
+Only include quotes scoring 4+ in all categories. Double-check the audio to make sure the quote is in the transcript word for word.
 
 6. Newsletter Elements:
 - List 6 potential "hook" angles for the TLDR
