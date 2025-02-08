@@ -1,5 +1,5 @@
 [project]
-name = "reverb_analyzer"
+name = "reverb"
 version = "0.1.0"
 description = "A podcast analysis and newsletter generation system"
 authors = [
