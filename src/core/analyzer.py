@@ -8,7 +8,7 @@ from typing import Optional
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
-from .prompts import PREANALYSIS_PROMPT, INTERVIEW_PROMPT, BANTER_PROMPT
+from .prompts import BACKGROUND, PREANALYSIS_PROMPT, INTERVIEW_PROMPT, BANTER_PROMPT
 from utils.logging_config import setup_logging
 
 logger = logging.getLogger(__name__)
@@ -113,7 +113,8 @@ class PodcastAnalyzer:
             logger.info(f"Step 1: Pre-analysis from audio using {self.preanalysis_model.model_name}...")
             formatted_prompt = PREANALYSIS_PROMPT.format(
                 name=name,
-                prompt_addition=prompt_addition
+                prompt_addition=prompt_addition,
+                background=BACKGROUND
             )
             logger.info(f"Using prompt addition for analysis: {prompt_addition[:50]}..." if prompt_addition else "No prompt addition detected")
             
@@ -128,12 +129,24 @@ class PodcastAnalyzer:
             
             # Select prompt based on podcast format
             if category == 'interview':
-                prompt = INTERVIEW_PROMPT.format(episode_description=episode_description)
+                prompt = INTERVIEW_PROMPT.format(
+                    prompt_addition=prompt_addition,
+                    episode_description=episode_description,
+                    background=BACKGROUND,
+                )
             elif category == 'banter':
-                prompt = BANTER_PROMPT.format(episode_description=episode_description)
+                prompt = BANTER_PROMPT.format(
+                    prompt_addition=prompt_addition,
+                    episode_description=episode_description,
+                    background=BACKGROUND,
+                )
             else:
                 logger.warning(f"Unknown podcast category: {category}, defaulting to interview prompt")
-                prompt = INTERVIEW_PROMPT.format(episode_description=episode_description)
+                prompt = INTERVIEW_PROMPT.format(
+                    prompt_addition=prompt_addition,
+                    episode_description=episode_description,
+                    background=BACKGROUND,
+                )
                 
             writing_response = self.writing_model.generate_content(
                 [prompt, preanalysis_response, audio_file],
