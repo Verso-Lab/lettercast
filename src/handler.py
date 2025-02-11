@@ -150,13 +150,11 @@ async def process_episode(
             'error': str(e)
         }
 
-# --- Change 2 & 10: Helper for concurrent episode processing ---
 async def process_episode_concurrent(podcast: Podcast, episode: Dict) -> Dict:
     """Process episode with dedicated database session."""
     async with AsyncSessionLocal() as local_db:
         return await process_episode(local_db, podcast, episode)
 
-# --- Modified lambda_handler to process episodes concurrently ---
 async def lambda_handler(event=None, context=None):
     """Process new podcast episodes from the last hour.
     
