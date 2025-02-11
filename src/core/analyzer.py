@@ -122,6 +122,8 @@ class PodcastAnalyzer:
                 [formatted_prompt, audio_file],
                 safety_settings=self.SAFETY_SETTINGS
             ).text
+
+            print(preanalysis_response) #debug
             
             # Generate newsletter from insights
             logger.info(f"Step 2: Writing newsletter from pre-analysis and audio using {self.writing_model.model_name}...")
