@@ -2,7 +2,7 @@ import logging
 import os
 import tempfile
 import time
-from typing import Dict
+from typing import Dict, List, Union, Tuple
 
 from pydub import AudioSegment
 
@@ -15,7 +15,76 @@ class AudioTransformationError(Exception):
     """Base exception for audio transformation errors."""
     pass
 
-def transform_audio(audio_path: str, target_params: Dict = None) -> str:
+def get_audio_length(audio_path: str) -> float:
+    """Get audio file length in minutes.
+    
+    Args:
+        audio_path: Path to audio file
+        
+    Returns:
+        Length in minutes
+        
+    Raises:
+        AudioTransformationError: If file cannot be loaded or length cannot be determined
+    """
+    try:
+        audio = AudioSegment.from_file(audio_path)
+        return len(audio) / (1000 * 60)  # Convert milliseconds to minutes
+    except Exception as e:
+        raise AudioTransformationError(f"Failed to get audio length: {str(e)}")
+
+def chunk_audio(audio_path: str, chunk_minutes: int = 20) -> List[str]:
+    """Split audio file into chunks of specified duration.
+    
+    Args:
+        audio_path: Path to the audio file to chunk
+        chunk_minutes: Duration of each chunk in minutes
+        
+    Returns:
+        List of paths to chunked audio files
+    """
+    try:
+        logger.info(f"Chunking audio file: {audio_path} into {chunk_minutes}-minute segments")
+        
+        # Load audio
+        audio = AudioSegment.from_file(audio_path)
+        
+        # Calculate chunk size in milliseconds
+        chunk_duration_ms = chunk_minutes * 60 * 1000
+        total_duration_ms = len(audio)
+        
+        chunk_paths = []
+        
+        # Create chunks
+        for i, start_ms in enumerate(range(0, total_duration_ms, chunk_duration_ms)):
+            end_ms = min(start_ms + chunk_duration_ms, total_duration_ms)
+            chunk = audio[start_ms:end_ms]
+            
+            # Create temporary file for chunk
+            with tempfile.NamedTemporaryFile(
+                suffix='.mp3',
+                delete=False
+            ) as tmp_file:
+                logger.info(f"Exporting chunk {i+1} ({(end_ms-start_ms)/1000:.1f} seconds)")
+                chunk.export(
+                    tmp_file.name,
+                    format='mp3',
+                    parameters=["-q:a", "9"]
+                )
+                chunk_paths.append(tmp_file.name)
+        
+        logger.info(f"Created {len(chunk_paths)} chunks")
+        return chunk_paths
+        
+    except Exception as e:
+        logger.error(f"Failed to chunk audio: {str(e)}", exc_info=True)
+        raise AudioTransformationError(f"Failed to chunk audio: {str(e)}") from None
+
+def transform_audio(
+    audio_path: str, 
+    target_params: Dict = None,
+    chunk_minutes: int = None
+) -> Union[str, Tuple[str, List[str]]]:
     """Optimize audio file for Gemini API processing.
     
     Args:
@@ -27,9 +96,12 @@ def transform_audio(audio_path: str, target_params: Dict = None) -> str:
                 'format': 'mp3',        # Output format
                 'quality': '9'          # MP3 quality (0-9)
             }
+        chunk_minutes: Optional duration in minutes to split audio into chunks
             
     Returns:
-        Path to optimized audio file
+        If chunk_minutes is None: Path to optimized audio file
+        If chunk_minutes is set: Tuple[str, List[str]] containing (full_audio_path, chunk_paths)
+            - If episode is shorter than chunk_minutes, chunk_paths will be empty
     """
     try:
         start_time = time.time()
@@ -94,6 +166,17 @@ def transform_audio(audio_path: str, target_params: Dict = None) -> str:
                 logger.info(f"Size reduction: {reduction:.1f}%")
                 logger.info(f"Transformation completed in {time.time() - start_time:.1f} seconds")
                 
+                # If chunking is requested, check length and chunk if needed
+                if chunk_minutes:
+                    audio_length = get_audio_length(tmp_file.name)
+                    if audio_length <= chunk_minutes:
+                        logger.info(f"Audio length ({audio_length:.1f}m) <= chunk size ({chunk_minutes}m), skipping chunking")
+                        return (tmp_file.name, [])
+                    else:
+                        logger.info(f"Proceeding to chunk audio into {chunk_minutes}-minute segments")
+                        chunk_paths = chunk_audio(tmp_file.name, chunk_minutes)
+                        return (tmp_file.name, chunk_paths)
+                    
                 return tmp_file.name
                 
         except Exception as e:

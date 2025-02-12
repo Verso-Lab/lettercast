@@ -3,7 +3,7 @@ import logging
 import os
 import time
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List, Dict, Union
 
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
@@ -80,8 +80,19 @@ class PodcastAnalyzer:
         if missing:
             logger.warning(f"Analysis missing required sections: {', '.join(missing)}")
     
-    def analyze_audio(self, audio_path: str, name: str, category: str, prompt_addition: str, episode_description: str = "") -> str:
-        """Generate detailed analysis of a podcast episode.
+    def analyze_audio(
+        self, 
+        audio_path: str, 
+        name: str, 
+        category: str, 
+        prompt_addition: str, 
+        episode_description: str = "",
+        chunk_context: Optional[str] = None,
+        moment_count: int = 10,
+        quote_count: int = 15,
+        hook_count: int = 6
+    ) -> str:
+        """Generate detailed analysis of a podcast episode or chunk.
         
         Args:
             audio_path: Path to audio file
@@ -89,6 +100,10 @@ class PodcastAnalyzer:
             category: Podcast category (interview/banter)
             prompt_addition: Additional podcast context
             episode_description: Episode-specific description
+            chunk_context: If analyzing a chunk, description of which part (e.g. "Part 1 of 3, 0-20 minutes")
+            moment_count: Number of moments to analyze (fewer for chunks)
+            quote_count: Number of quotes to extract (fewer for chunks)
+            hook_count: Number of hooks to generate (fewer for chunks)
             
         Returns:
             Structured analysis text
@@ -114,7 +129,11 @@ class PodcastAnalyzer:
             formatted_prompt = PREANALYSIS_PROMPT.format(
                 name=name,
                 prompt_addition=prompt_addition,
-                background=BACKGROUND
+                background=BACKGROUND,
+                chunk_context=chunk_context or "an episode",
+                moment_count=moment_count,
+                quote_count=quote_count,
+                hook_count=hook_count
             )
             logger.info(f"Using prompt addition for analysis: {prompt_addition[:50]}..." if prompt_addition else "No prompt addition detected")
             
@@ -122,49 +141,59 @@ class PodcastAnalyzer:
                 [formatted_prompt, audio_file],
                 safety_settings=self.SAFETY_SETTINGS
             ).text
-
-            print(preanalysis_response) #debug
             
-            # Generate newsletter from insights
-            logger.info(f"Step 2: Writing newsletter from pre-analysis and audio using {self.writing_model.model_name}...")
-            logger.info(f"Using episode description: {episode_description[:50]}..." if episode_description else "No episode description detected")
-            
-            # Select prompt based on podcast format
-            if category == 'interview':
-                prompt = INTERVIEW_PROMPT.format(
-                    prompt_addition=prompt_addition,
-                    episode_description=episode_description,
-                    background=BACKGROUND,
-                )
-            elif category == 'banter':
-                prompt = BANTER_PROMPT.format(
-                    prompt_addition=prompt_addition,
-                    episode_description=episode_description,
-                    background=BACKGROUND,
-                )
-            else:
-                logger.warning(f"Unknown podcast category: {category}, defaulting to interview prompt")
-                prompt = INTERVIEW_PROMPT.format(
-                    prompt_addition=prompt_addition,
-                    episode_description=episode_description,
-                    background=BACKGROUND,
-                )
-                
-            writing_response = self.writing_model.generate_content(
-                [prompt, preanalysis_response, audio_file],
-                safety_settings=self.SAFETY_SETTINGS
-            ).text
-            
-            self.validate_analysis(writing_response)
-            logger.info(f"Analysis completed in {time.time() - start_time:.1f} seconds")
-            return writing_response
+            return preanalysis_response
                 
         except Exception as e:
             if not isinstance(e, AnalyzerError):
                 logger.error(f"Analysis failed: {str(e)}", exc_info=True)
                 raise AnalyzerError(f"Analysis failed: {str(e)}") from None
             raise
-    
+
+    def analyze_chunks(
+        self,
+        chunk_paths: List[str],
+        name: str,
+        category: str,
+        prompt_addition: str,
+        episode_description: str = ""
+    ) -> List[str]:
+        """Analyze multiple chunks of a podcast episode.
+        
+        Args:
+            chunk_paths: List of paths to audio chunks
+            name: Podcast name
+            category: Podcast category
+            prompt_addition: Additional podcast context
+            episode_description: Episode description
+            
+        Returns:
+            List of analysis texts, one per chunk
+        """
+        logger.info(f"Starting chunk analysis for {len(chunk_paths)} chunks...")
+        chunk_analyses = []
+        
+        for i, chunk_path in enumerate(chunk_paths, 1):
+            logger.info(f"Analyzing chunk {i}/{len(chunk_paths)}: {chunk_path}")
+            
+            # Use smaller counts for chunk analysis
+            chunk_analysis = self.analyze_audio(
+                audio_path=chunk_path,
+                name=name,
+                category=category,
+                prompt_addition=prompt_addition,
+                episode_description=episode_description,
+                chunk_context=f"Part {i} of {len(chunk_paths)}, {(i-1)*20}-{i*20} minutes",
+                moment_count=7,  # Reduced from 10
+                quote_count=8,   # Reduced from 15
+                hook_count=3     # Reduced from 6
+            )
+            chunk_analyses.append(chunk_analysis)
+            logger.info(f"Completed analysis of chunk {i}/{len(chunk_paths)}")
+            
+        logger.info(f"Completed analysis of all {len(chunk_paths)} chunks")
+        return chunk_analyses
+
     def format_newsletter(self, analysis: str, name: str, title: str, publish_date: datetime) -> str:
         """Format analysis into newsletter template.
         
@@ -222,17 +251,19 @@ class PodcastAnalyzer:
         publish_date: datetime,
         prompt_addition: str = "",
         episode_description: str = "",
+        chunk_paths: Optional[List[str]] = None
     ) -> str:
         """Process podcast from audio to newsletter.
         
         Args:
-            audio_path: Audio file path
+            audio_path: Full audio file path (used only for final context)
             name: Podcast name
             title: Episode title
             category: Podcast category (interview/banter)
             publish_date: Episode publish date
             prompt_addition: Additional podcast context
             episode_description: Episode description
+            chunk_paths: List of paths to audio chunks. If empty, will analyze full audio directly.
             
         Returns:
             Formatted newsletter text
@@ -267,15 +298,63 @@ class PodcastAnalyzer:
             if not episode_description:
                 logger.warning(f"No episode description found for podcast: {name}")
             
-            # Get analysis using normalized parameters
-            analysis = self.analyze_audio(
-                audio_path,
-                **analysis_params
-            )
+            # Get analyses based on whether we have chunks
+            if chunk_paths and len(chunk_paths) > 0:
+                logger.info(f"Processing {len(chunk_paths)} chunks...")
+                analyses = self.analyze_chunks(
+                    chunk_paths=chunk_paths,
+                    **analysis_params
+                )
+                logger.info(f"Completed analysis of {len(analyses)} chunks")
+            else:
+                logger.info("No chunks provided or episode too short, analyzing full audio...")
+                analyses = [self.analyze_audio(
+                    audio_path=audio_path,
+                    **analysis_params
+                )]
+                logger.info("Completed full audio analysis")
+            
+            # Select prompt based on podcast format
+            if category == 'interview':
+                prompt = INTERVIEW_PROMPT.format(
+                    prompt_addition=prompt_addition,
+                    episode_description=episode_description,
+                    background=BACKGROUND,
+                )
+            elif category == 'banter':
+                prompt = BANTER_PROMPT.format(
+                    prompt_addition=prompt_addition,
+                    episode_description=episode_description,
+                    background=BACKGROUND,
+                )
+            else:
+                logger.warning(f"Unknown podcast category: {category}, defaulting to interview prompt")
+                prompt = INTERVIEW_PROMPT.format(
+                    prompt_addition=prompt_addition,
+                    episode_description=episode_description,
+                    background=BACKGROUND,
+                )
+            
+            # Generate newsletter using analyses and full audio
+            logger.info("Generating final newsletter...")
+            content_parts = [prompt]
+            content_parts.extend(analyses)
+            logger.info(f"Including {len(analyses)} analyses in final generation")
+            
+            # Add the full audio for final context
+            audio_file = genai.upload_file(audio_path)
+            content_parts.append(audio_file)
+            
+            writing_response = self.writing_model.generate_content(
+                content_parts,
+                safety_settings=self.SAFETY_SETTINGS
+            ).text
+            
+            self.validate_analysis(writing_response)
             
             # Format newsletter with validated parameters
             return self.format_newsletter(
-                analysis=analysis,
+                analysis=writing_response,
                 name=name,
                 title=title,
                 publish_date=publish_date

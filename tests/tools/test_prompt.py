@@ -10,8 +10,9 @@ from src.core.analyzer import PodcastAnalyzer
 from src.core.scraper import get_recent_episodes
 from src.database.config import AsyncSessionLocal
 from src.database.models import Podcast
+from src.utils.audio_transformer import get_audio_length, chunk_audio
 from src.utils.logging_config import setup_logging
-from src.utils.temp_file_context import download_audio_context, transform_audio_context
+from src.utils.temp_file_context import download_audio_context
 
 logger = logging.getLogger(__name__)
 setup_logging()
@@ -71,9 +72,6 @@ def select_episode(episodes):
 
 async def main():
     """Test script for analyzing podcast episodes with Gemini"""
-    downloaded_file = None
-    transformed_audio = None
-    
     try:
         # Get API key
         api_key = os.getenv('GEMINI_API_KEY')
@@ -102,27 +100,45 @@ async def main():
         # Process the episode
         print(f"\nProcessing episode: {episode['title']}")
         
-        # Download and transform audio
+        # Download and chunk audio
         with download_audio_context(episode['url']) as downloaded_file:
-            with transform_audio_context(downloaded_file) as transformed_audio:
-                # Initialize analyzer
-                analyzer = PodcastAnalyzer(api_key)
-                
-                # Process podcast
-                newsletter = analyzer.process_podcast(
-                    audio_path=transformed_audio,
-                    name=podcast.name,
-                    title=episode['title'],
-                    category=podcast.category or 'interview',
-                    publish_date=episode['publish_date'],
-                    prompt_addition=podcast.prompt_addition or '',
-                    episode_description=episode.get('episode_description', '')
-                )
-                
-                print("\nGenerated Newsletter:")
-                print("=" * 80)
-                print(newsletter)
-                print("=" * 80)
+            # Get audio length and create chunks if needed
+            audio_length = get_audio_length(downloaded_file)
+            chunk_minutes = 20
+            
+            if audio_length <= chunk_minutes:
+                logger.info(f"Episode length ({audio_length:.1f}m) <= chunk size ({chunk_minutes}m), skipping chunking")
+                chunk_paths = []
+            else:
+                logger.info(f"Creating {chunk_minutes}-minute chunks...")
+                chunk_paths = chunk_audio(downloaded_file, chunk_minutes)
+                logger.info(f"Created {len(chunk_paths)} chunks")
+            
+            # Initialize analyzer
+            analyzer = PodcastAnalyzer(api_key)
+            
+            # Process podcast with full audio and chunks (if any)
+            newsletter = analyzer.process_podcast(
+                audio_path=downloaded_file,
+                name=podcast.name,
+                title=episode['title'],
+                category=podcast.category or 'interview',
+                publish_date=episode['publish_date'],
+                prompt_addition=podcast.prompt_addition or '',
+                episode_description=episode.get('episode_description', ''),
+                chunk_paths=chunk_paths
+            )
+            
+            # Clean up chunk files if any were created
+            if chunk_paths:
+                for path in chunk_paths:
+                    if os.path.exists(path):
+                        os.unlink(path)
+            
+            print("\nGenerated Newsletter:")
+            print("=" * 80)
+            print(newsletter)
+            print("=" * 80)
         
     except Exception as e:
         logger.error(f"Error: {str(e)}")

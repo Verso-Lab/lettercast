@@ -11,7 +11,7 @@ import pytz
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core import PodcastAnalyzer
-from core.scraper import get_recent_episodes
+from core.scraper import get_recent_episodes, get_audio_length, chunk_audio
 from src.database import crud
 from src.database.config import AsyncSessionLocal
 from src.database.models import Podcast
@@ -108,38 +108,55 @@ async def process_episode(
     try:
         logger.info("Downloading episode: %s from %s", episode['title'], podcast.name)
         with download_audio_context(episode['url']) as downloaded_file:
-            logger.info("Transforming audio...")
-            with transform_audio_context(downloaded_file) as transformed_audio:
-                logger.info("Processing episode: %s", episode['title'])
-                
-                newsletter = GLOBAL_ANALYZER.process_podcast(
-                    audio_path=transformed_audio,
-                    name=podcast.name,
-                    title=episode['title'],
-                    category=podcast.category if hasattr(podcast, 'category') else 'interview',
-                    publish_date=datetime.fromisoformat(episode['publish_date']) if isinstance(episode['publish_date'], str) else episode['publish_date'],
-                    prompt_addition=podcast.prompt_addition,
-                    episode_description=episode.get('episode_description', "")
-                )
-                episode_data = {
-                    'podcast_id': podcast.id,
-                    'rss_guid': episode['rss_guid'],
-                    'title': episode['title'],
-                    'publish_date': datetime.fromisoformat(episode['publish_date']) if isinstance(episode['publish_date'], str) else episode['publish_date'],
-                    'summary': newsletter
-                }
-                await crud.create_episode(db, episode_data)
-                await db.commit()
+            # Get audio length and create chunks if needed
+            audio_length = get_audio_length(downloaded_file)
+            chunk_minutes = 20
+            
+            if audio_length <= chunk_minutes:
+                logger.info(f"Episode length ({audio_length:.1f}m) <= chunk size ({chunk_minutes}m), skipping chunking")
+                chunk_paths = []
+            else:
+                logger.info(f"Creating {chunk_minutes}-minute chunks...")
+                chunk_paths = chunk_audio(downloaded_file, chunk_minutes)
+                logger.info(f"Created {len(chunk_paths)} chunks")
+            
+            # Process the podcast with full audio and chunks (if any)
+            newsletter = GLOBAL_ANALYZER.process_podcast(
+                audio_path=downloaded_file,
+                name=podcast.name,
+                title=episode['title'],
+                category=podcast.category if hasattr(podcast, 'category') else 'interview',
+                publish_date=datetime.fromisoformat(episode['publish_date']) if isinstance(episode['publish_date'], str) else episode['publish_date'],
+                prompt_addition=podcast.prompt_addition,
+                episode_description=episode.get('episode_description', ""),
+                chunk_paths=chunk_paths
+            )
+            
+            episode_data = {
+                'podcast_id': podcast.id,
+                'rss_guid': episode['rss_guid'],
+                'title': episode['title'],
+                'publish_date': datetime.fromisoformat(episode['publish_date']) if isinstance(episode['publish_date'], str) else episode['publish_date'],
+                'summary': newsletter
+            }
+            await crud.create_episode(db, episode_data)
+            await db.commit()
 
-                result = {
-                    'status': 'success',
-                    'podcast_id': podcast.id,
-                    'episode_id': episode['id'],
-                    'title': episode['title'],
-                    'newsletter': newsletter
-                }
-                logger.info("Episode %s processed successfully", episode['title'])
-                return result
+            # Clean up chunk files if any were created
+            if chunk_paths:
+                for path in chunk_paths:
+                    if os.path.exists(path):
+                        os.unlink(path)
+
+            result = {
+                'status': 'success',
+                'podcast_id': podcast.id,
+                'episode_id': episode['id'],
+                'title': episode['title'],
+                'newsletter': newsletter
+            }
+            logger.info("Episode %s processed successfully", episode['title'])
+            return result
     except Exception as e:
         logger.error("Failed to process episode %s: %s", episode['id'], str(e), exc_info=True)
         return {
