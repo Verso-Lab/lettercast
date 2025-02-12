@@ -118,7 +118,7 @@ async def main():
             analyzer = PodcastAnalyzer(api_key)
             
             # Process podcast with full audio and chunks (if any)
-            newsletter = analyzer.process_podcast(
+            newsletter = await analyzer.process_podcast(
                 audio_path=downloaded_file,
                 name=podcast.name,
                 title=episode['title'],

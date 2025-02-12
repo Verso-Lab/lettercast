@@ -121,7 +121,7 @@ async def process_episode(
                 logger.info(f"Created {len(chunk_paths)} chunks")
             
             # Process the podcast with full audio and chunks (if any)
-            newsletter = GLOBAL_ANALYZER.process_podcast(
+            newsletter = await GLOBAL_ANALYZER.process_podcast(
                 audio_path=downloaded_file,
                 name=podcast.name,
                 title=episode['title'],
