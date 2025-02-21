@@ -1,10 +1,10 @@
 [project]
-name = "reverb"
+name = "reverb_analyzer"
 version = "0.1.0"
-description = "A podcast analysis and newsletter generation system"
+description = "AWS Lambda function for Reverb podcast analysis"
 authors = [
-    {name = "kavwad",email = "123405488+kavwad@users.noreply.github.com"},
-    {name = "patrickswnsn",email = "patrickdswanson@icloud.com"},
+    {name = "kavwad", email = "123405488+kavwad@users.noreply.github.com"},
+    {name = "patrickswnsn", email = "patrickdswanson@icloud.com"},
 ]
 readme = "README.md"
 requires-python = ">=3.13"
@@ -21,6 +21,8 @@ dependencies = [
     "greenlet (>=3.1.1,<4.0.0)",
     "pytz (>=2024.2,<2025.0)",
     "sqlmodel (>=0.0.22,<0.0.23)",
+    "boto3 (>=1.36.25,<2.0.0)",
+    "aws-lambda-client (>=0.1.0,<0.2.0)",
 ]
 
 
@@ -29,10 +31,11 @@ requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
+name = "reverb_analyzer"
 packages = [
-    { include = "src" },
+    { include = "database", from = "src" },
     { include = "core", from = "src" },
-    { include = "utils", from = "src" },
+    { include = "utils", from = "src" }
 ]
 
 [tool.poetry.group.dev.dependencies]

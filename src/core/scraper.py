@@ -6,7 +6,7 @@ from typing import Dict, List
 import pytz
 import requests
 from lxml import etree
-from src.database.models import Podcast
+from database.models import Podcast
 
 logger = logging.getLogger(__name__)
 

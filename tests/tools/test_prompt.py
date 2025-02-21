@@ -7,13 +7,13 @@ from dotenv import load_dotenv
 from sqlalchemy import select
 import argparse
 
-from src.core.analyzer import PodcastAnalyzer
-from src.core.scraper import get_recent_episodes
-from src.database.config import AsyncSessionLocal
-from src.database.models import Podcast
-from src.utils.audio_transformer import get_audio_length, chunk_audio
-from src.utils.logging_config import setup_logging
-from src.utils.temp_file_context import download_audio_context
+from core.analyzer import PodcastAnalyzer
+from core.scraper import get_recent_episodes
+from database.config import AsyncSessionLocal
+from database.models import Podcast
+from utils.audio_transformer import get_audio_length, chunk_audio
+from utils.logging_config import setup_logging
+from utils.temp_file_context import download_audio_context
 
 logger = logging.getLogger(__name__)
 

@@ -12,12 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core import PodcastAnalyzer
 from core.scraper import get_recent_episodes
-from src.database import crud
-from src.database.config import AsyncSessionLocal
-from src.database.models import Podcast
-from src.utils.audio_transformer import get_audio_length, chunk_audio
-from src.utils.logging_config import setup_logging
-from src.utils.temp_file_context import download_audio_context
+from database import crud
+from database.config import AsyncSessionLocal
+from database.models import Podcast
+from utils.audio_transformer import get_audio_length, chunk_audio
+from utils.logging_config import setup_logging
+from utils.temp_file_context import download_audio_context
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +88,7 @@ async def find_unprocessed_episodes(db: AsyncSession, podcast: Podcast, rss_epis
             new_episodes += 1
     
     logger.info(
-        f"Found {episodes_in_window} episodes within {minutes} minute window for {podcast.name}, of which {new_episodes} are new"
+        f"Found {episodes_in_window} episode(s) within {minutes} minute window for {podcast.name}" + (f", of which {new_episodes} are new" if episodes_in_window > 0 else "")
     )
     
     return unprocessed
@@ -246,8 +246,6 @@ async def lambda_handler(event=None, context=None):
                             'podcast': podcast.name,
                             'error': str(e)
                         })
-            else:
-                logger.info("No new episodes found for podcast: %s", podcast.name)
 
         summary = {
             'time_window_minutes': minutes,

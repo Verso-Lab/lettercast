@@ -7,8 +7,8 @@ from typing import Dict, Optional, Tuple
 import requests
 from lxml import etree
 
-from src.core.scraper import RSSParsingError
-from src.database import get_db, create_podcast, get_podcast_by_rss_url
+from core.scraper import RSSParsingError
+from database import get_db, create_podcast, get_podcast_by_rss_url
 
 CATEGORIES = ['banter', 'interview']
 

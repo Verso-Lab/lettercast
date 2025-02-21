@@ -1,7 +1,7 @@
 import asyncio
 import argparse
 import os
-from src.handler import lambda_handler
+from handler import lambda_handler
 
 # TODO: Interactive mode (-i) needs to be implemented separately from Lambda handler
 # since Lambda code should stay focused on batch processing. Consider creating a
