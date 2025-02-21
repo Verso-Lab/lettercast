@@ -11,12 +11,13 @@ import pytz
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core import PodcastAnalyzer
-from core.scraper import get_recent_episodes, get_audio_length, chunk_audio
+from core.scraper import get_recent_episodes
 from src.database import crud
 from src.database.config import AsyncSessionLocal
 from src.database.models import Podcast
-from utils.logging_config import setup_logging
-from utils.temp_file_context import download_audio_context, transform_audio_context
+from src.utils.audio_transformer import get_audio_length, chunk_audio
+from src.utils.logging_config import setup_logging
+from src.utils.temp_file_context import download_audio_context
 
 logger = logging.getLogger(__name__)
 
@@ -199,29 +200,24 @@ async def lambda_handler(event=None, context=None):
         failed_processes = 0
         errors = []
 
-        # Process podcasts concurrently
+        # Process each podcast one at a time
         for podcast in podcasts:
-            try:
-                logger.info("Checking for new episodes: %s", podcast.name)
-                rss_episodes = get_recent_episodes(podcast)['episodes']
-                
-                async with AsyncSessionLocal() as db:
-                    unprocessed = await find_unprocessed_episodes(db, podcast, rss_episodes, minutes)
+            # First get RSS episodes
+            rss_episodes = get_recent_episodes(podcast)['episodes']
+            
+            # Then check which episodes are new/unprocessed
+            async with AsyncSessionLocal() as db:
+                unprocessed = await find_unprocessed_episodes(db, podcast, rss_episodes, minutes)
 
-                total_new_episodes += len(unprocessed)
+            total_new_episodes += len(unprocessed)
 
-                if unprocessed:
-                    # Process episodes concurrently
-                    tasks = [process_episode_concurrent(podcast, episode) for episode in unprocessed]
-                    results = await asyncio.gather(*tasks, return_exceptions=True)
-                    for result in results:
-                        if isinstance(result, Exception):
-                            failed_processes += 1
-                            errors.append({
-                                'podcast': podcast.name,
-                                'error': str(result)
-                            })
-                        elif result.get('status') == 'success':
+            if unprocessed:
+                logger.info(f"Processing {len(unprocessed)} episodes for podcast: {podcast.name}")
+                for episode in unprocessed:
+                    logger.info(f"Starting to process episode: {episode.get('title')} from {podcast.name}")
+                    try:
+                        result = await process_episode_concurrent(podcast, episode)
+                        if result.get('status') == 'success':
                             successful_processes += 1
                         else:
                             failed_processes += 1
@@ -230,17 +226,14 @@ async def lambda_handler(event=None, context=None):
                                 'episode': result.get('title', 'Unknown'),
                                 'error': result.get('error', 'Unknown error')
                             })
-                else:
-                    logger.info("No new episodes found for podcast: %s", podcast.name)
-
-            except Exception as e:
-                logger.error("Error processing podcast %s: %s", podcast.name, str(e))
-                failed_processes += 1
-                errors.append({
-                    'podcast': podcast.name,
-                    'error': str(e)
-                })
-                continue
+                    except Exception as e:
+                        failed_processes += 1
+                        errors.append({
+                            'podcast': podcast.name,
+                            'error': str(e)
+                        })
+            else:
+                logger.info("No new episodes found for podcast: %s", podcast.name)
 
         summary = {
             'time_window_minutes': minutes,
