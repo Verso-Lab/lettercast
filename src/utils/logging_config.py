@@ -41,6 +41,8 @@ LOGGING_CONFIG = {
     }
 }
 
-def setup_logging():
+def setup_logging(level: str = "INFO"):
+    LOGGING_CONFIG["handlers"]["console"]["level"] = level
+    LOGGING_CONFIG["root"]["level"] = level
     logging.config.dictConfig(LOGGING_CONFIG)
     return logging.getLogger(__name__)
