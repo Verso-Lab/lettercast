@@ -115,16 +115,15 @@ class PodcastAnalyzer:
             for existing_file in existing_files:
                 gemini_hash = existing_file.sha256_hash.decode() if isinstance(existing_file.sha256_hash, bytes) else existing_file.sha256_hash
                 if gemini_hash == file_hash:
-                    logger.info(f"Found {chunk_context or 'audio'} in Gemini storage")
+                    logger.info(f"Found {chunk_context or 'audio'} in {self.preanalysis_model.model_name} storage")
                     audio_file = existing_file
                     break
             else:
-                logger.info(f"Uploading audio {chunk_context or ''} to Gemini...")
+                logger.info(f"Uploading audio {chunk_context or ''} to {self.preanalysis_model.model_name}...")
                 # Run upload in thread pool
                 audio_file = await asyncio.to_thread(genai.upload_file, audio_path)
             
             # Get initial insights from audio
-            logger.info(f"Step 1: Pre-analysis using {self.preanalysis_model.model_name}...")
             formatted_prompt = PREANALYSIS_PROMPT.format(
                 name=name,
                 prompt_addition=prompt_addition,
