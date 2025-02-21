@@ -5,6 +5,7 @@ import pytz
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from sqlalchemy import select
+import argparse
 
 from src.core.analyzer import PodcastAnalyzer
 from src.core.scraper import get_recent_episodes
@@ -15,7 +16,12 @@ from src.utils.logging_config import setup_logging
 from src.utils.temp_file_context import download_audio_context
 
 logger = logging.getLogger(__name__)
-setup_logging()
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-d', '--debug', action='store_true', help='Enable debug logging')
+args = parser.parse_args()
+
+setup_logging(level="DEBUG" if args.debug else "INFO")
 load_dotenv()
 
 def strip_articles(name: str) -> str:
@@ -86,7 +92,7 @@ async def main():
         all_episodes = get_recent_episodes(podcast)['episodes']
         
         # Filter for last week
-        cutoff_time = datetime.now(pytz.UTC) - timedelta(days=7)
+        cutoff_time = datetime.now(pytz.UTC) - timedelta(days=30)
         recent_episodes = [
             ep for ep in all_episodes 
             if ep['publish_date'] >= cutoff_time
