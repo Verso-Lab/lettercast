@@ -133,6 +133,13 @@ async def process_episode(
                 chunk_paths=chunk_paths
             )
             
+            # Strip markdown code fences and XML tags from the newsletter
+            newsletter = newsletter.strip()
+            if newsletter.startswith('```') and newsletter.endswith('```'):
+                newsletter_lines = newsletter.split('\n')
+                newsletter = '\n'.join(newsletter_lines[1:-1])
+            newsletter = newsletter.replace('<NEWSLETTER>', '').replace('</NEWSLETTER>', '').strip()
+            
             episode_data = {
                 'podcast_id': podcast.id,
                 'rss_guid': episode['rss_guid'],
