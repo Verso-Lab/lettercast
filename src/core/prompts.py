@@ -139,12 +139,12 @@ Important: Each section below serves a distinct purpose. Avoid repeating informa
 
 ## TLDR
 [1-2 punchy sentences that:
-- Name and identify key speaker(s) and core premise
+- Identify the episode premise, name the key speaker(s), and identify them fully
 - Work like a headline or hook
 - Maintain clear attribution
 - Examples:
-  - GOOD: "Sam Altman gets surprisingly candid about OpenAI's AGI timeline in this no-holds-barred chat with Kara Swisher"
-  - GOOD: "Barbara McClintock shares breakthrough research on how trauma physically rewires the body - with unexpected results"
+  - GOOD: "OpenAI CEO Sam Altman gets surprisingly candid about OpenAI's AGI timeline in this no-holds-barred chat with host Kara Swisher"
+  - GOOD: "Nobel laureate and gene-editing pioneer Jennifer Doudna shares how her lab's new CRISPR-Omega system eliminated MRSA in 94% of trial patients—and why this discovery almost didn't happen"
 ]
 
 ## The big picture
@@ -155,7 +155,7 @@ Important: Each section below serves a distinct purpose. Avoid repeating informa
 - Show how the topic is explored
 - Examples:
   - GOOD: "What starts as a technical discussion about AI safety turns into a fascinating debate between tech's biggest optimist and its sharpest critic. The conversation weaves through practical safeguards and philosophical dilemmas, making complex concepts surprisingly accessible while challenging the usual AI narratives."
-  - GOOD: "McClintock connects the dots between lab research and real human experience, backing up trauma survivors' lived experiences with hard science. She shares new findings that bridge theory and practice, plus some unexpected discoveries that changed her own perspective."
+  - GOOD: "Doudna walks us through the 3-year journey from a failed experiment with staph bacteria to a breakthrough in treating antibiotic-resistant infections. She details how her team's accidental discovery of the CAS-27 protein led to CRISPR-Omega, now in Phase III trials at Mayo Clinic and Stanford Hospital. The conversation covers both the technical innovations and the ethical challenges of deploying genetic engineering in emergency medicine."
 ]
 
 ## Highlights
@@ -166,7 +166,7 @@ Important: Each section below serves a distinct purpose. Avoid repeating informa
 - Document actual "aha" moments
 - Examples:
   - GOOD: "Altman pulls up internal safety data that catches everyone off guard. In one test, GPT-4o generated political messaging that were 67% more convincing than the best human political messaging."
-  - GOOD: "McClintock connects childhood memories to measurable biological changes, showing how trauma can cause increased cortisol levels and reduced hippocampal volume for the rest of the person's life."
+  - GOOD: "Doudna shares previously unreleased data from the Stanford trial: CRISPR-Omega eliminated MRSA in 94% of cases within 72 hours, while simultaneously boosting beneficial gut bacteria populations by 47%—a dual effect that shocked even her team. She reveals how a grad student's documentation error accidentally led to this discovery."
 ]
 
 ## Quoted
@@ -176,7 +176,7 @@ Important: Each section below serves a distinct purpose. Avoid repeating informa
 - Has clear attribution
 - Is verified in audio
 - Includes brief context, but only if needed
-- Note: Clean up the quote to make it readable (remove filler words, fix typos and punctuation, etc.), but do not alter the meaning.
+- Is cleaned and readable (filler words removed, typos and punctuation fixed, etc.) without altering the meaning
 - Format: "Quote" - Speaker Name, brief speaker description, brief context if needed
 ]
 
