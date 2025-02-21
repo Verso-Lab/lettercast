@@ -194,42 +194,7 @@ class PodcastAnalyzer:
         chunk_analyses = [analysis for _, analysis in sorted(chunk_results, key=lambda x: x[0])]
         
         return chunk_analyses
-
-    def format_newsletter(self, analysis: str, name: str, title: str, publish_date: datetime) -> str:
-        """Format analysis into newsletter template.
-        
-        Args:
-            analysis: Analysis text from analyze_audio
-            name: Podcast name
-            title: Episode title
-            publish_date: Episode publish date
-            
-        Returns:
-            Formatted newsletter text
-        """
-        try:
-            logger.info("Formatting newsletter...")
-            
-            if not analysis:
-                raise AnalyzerError("Analysis text cannot be empty")
-            if not name:
-                raise AnalyzerError("Podcast name cannot be empty")
-            if not title:
-                raise AnalyzerError("Episode title cannot be empty")
-            
-            date_str = publish_date.strftime("%B %d, %Y")
-            newsletter = f"{date_str} | {name}\n# {title}\n"
-            newsletter += analysis
-            
-            logger.info("Newsletter formatting complete")
-            return newsletter
-        
-        except InvalidAnalysisError:
-            raise
-        except Exception as e:
-            logger.error(f"Error formatting newsletter: {str(e)}", exc_info=True)
-            raise AnalyzerError(f"Failed to format newsletter: {str(e)}")
-    
+  
     def save_newsletter(self, newsletter_text: str, output_path: Optional[str] = None) -> str:
         """Save newsletter to file, using default path if none provided"""
         output_path = output_path or f"newsletters/lettercast_{datetime.now().strftime('%Y%m%d')}.md"
@@ -355,13 +320,7 @@ class PodcastAnalyzer:
             
             self.validate_analysis(writing_response.text)
             
-            # Format newsletter with validated parameters
-            return self.format_newsletter(
-                analysis=writing_response.text,
-                name=name,
-                title=title,
-                publish_date=publish_date
-            )
+            return writing_response.text
             
         except Exception as e:
             if not isinstance(e, AnalyzerError):
