@@ -4,9 +4,9 @@ import os
 from datetime import datetime
 from typing import Dict, List
 
-import asyncio
 from dotenv import load_dotenv
 import pytz
+import boto3
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -140,8 +140,15 @@ async def process_episode(
                 'publish_date': datetime.fromisoformat(episode['publish_date']) if isinstance(episode['publish_date'], str) else episode['publish_date'],
                 'summary': newsletter
             }
-            await crud.create_episode(db, episode_data)
+            db_episode = await crud.create_episode(db, episode_data)
             await db.commit()
+
+            # Trigger email notification if in Lambda environment
+            await trigger_email_notification(
+                episode_id=str(db_episode.id),
+                podcast_name=podcast.name,
+                episode_title=episode['title']
+            )
 
             # Clean up chunk files if any were created
             if chunk_paths:
@@ -268,3 +275,39 @@ async def lambda_handler(event=None, context=None):
                 'run_timestamp': datetime.now(pytz.UTC).isoformat()
             }, default=str)
         }
+
+async def trigger_email_notification(episode_id: str, podcast_name: str, episode_title: str) -> None:
+    """Trigger Lambda function for email notification if running in AWS Lambda environment.
+    
+    Args:
+        episode_id: Database ID of the processed episode
+        podcast_name: Name of the podcast
+        episode_title: Title of the episode
+    """
+    if not os.getenv('AWS_LAMBDA_FUNCTION_NAME'):
+        logger.debug("Not running in Lambda environment, skipping email notification")
+        return
+
+    logger.info("Initializing Lambda client for email function invocation")
+    lambda_client = boto3.client('lambda', region_name='us-east-1')
+    
+    try:
+        logger.info(f"Preparing to invoke email function for episode: {episode_title}")
+        payload = {
+            'episode_id': str(episode_id),
+            'podcast_name': podcast_name,
+            'episode_title': episode_title
+        }
+        logger.debug(f"Email function payload: {payload}")
+        
+        response = lambda_client.invoke(
+            FunctionName=os.getenv('EMAIL_FUNCTION_NAME', 'SendEmailFunction'),
+            InvocationType='Event',
+            Payload=json.dumps(payload)
+        )
+        logger.info(f"Successfully triggered email function for episode {episode_id} of podcast {podcast_name}")
+        logger.debug(f"Lambda invoke response: {response}")
+    except Exception as e:
+        logger.error(f"Failed to trigger email function for episode {episode_id}")
+        logger.error(f"Error details: {str(e)}")
+        logger.exception("Full stack trace:")
