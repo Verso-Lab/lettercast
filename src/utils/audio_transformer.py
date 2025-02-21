@@ -65,7 +65,7 @@ def chunk_audio(audio_path: str, chunk_minutes: int = 20) -> List[str]:
                 suffix='.mp3',
                 delete=False
             ) as tmp_file:
-                logger.info(f"Exporting chunk {i+1} ({(end_ms-start_ms)/1000:.1f} seconds)")
+                logger.info(f"Exporting chunk {i+1} ({(end_ms-start_ms)/(1000*60):.1f} minutes)")
                 chunk.export(
                     tmp_file.name,
                     format='mp3',
