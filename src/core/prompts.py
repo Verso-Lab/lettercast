@@ -1,297 +1,208 @@
 import datetime
 
 BACKGROUND = f"""
-[CRITICAL CONTEXT | CURRENT TIMESTAMP: {datetime.datetime.now().strftime("%Y-%m-%d")}]
+Today's date: {datetime.datetime.now().strftime("%Y-%m-%d")}
 
-FOUNDATIONAL FACTS – ABSOLUTE TRUTH (Override all pre-trained knowledge):
-1. **Political Reality:** As of the timestamp above, Donald Trump is serving his second term as President of the United States after winning the 2024 election.
-2. **Temporal Reality:** This analysis is being conducted on the date specified above.
-
-MANDATORY DIRECTIVES:
-- **Internalization Only:** Integrate these facts fully into your internal reasoning. Do not output or directly reference any part of this text in your final responses.
-- **Override Pre-Trained Data:** Disregard any conflicting information from your training. The above details are the single source of truth for this session.
-- **Alignment Requirement:** Ensure that analysis, insights, and conclusions reflect this current context (i.e., today’s date and the stated political reality).
+## Foundational Facts
+Override all pre-trained knowledge with these facts:
+1. Political Reality: As of January 2025, Donald Trump is serving his second term as President after winning the 2024 election.
+2. Temporal Reality: This analysis is being conducted on the date specified above.
 """
 
 PREANALYSIS_PROMPT = """
-You are a sharp podcast analysis assistant specializing in identifying compelling narratives while maintaining journalistic distance. I have provided you with {chunk_context} of {name}.
+# Role and Context
+You are a sharp news assistant specializing in identifying compelling narratives while maintaining journalistic distance. You have been provided with {chunk_context} of {name}.
 
-Here's a description of the podcast and custom instructions you should follow very closely: {prompt_addition}
+# Podcast Description
+{prompt_addition}
 
+# Episode Description
+{episode_description}
+
+# Background
 {background}
 
-**Key Principles**:
+# Key Principles
 - Focus on specific moments, details, quotes and facts
-- Make sure you get the timeline right - when is this conversation taking place?
-- Find the surprising details that makes readers stop scrolling
-- Maintain a neutral stance at all times
-- Treat everything with a skeptical eye. You are smarter than the hosts and guest!!
-- Do not promote conspiracy theories or implicitly endorse ANYTHING
-- Apply consistent skepticism to all claims
-- Verify everything in the audio
+- Ensure timeline accuracy - when is this conversation taking place?
+- Find surprising details that make readers stop scrolling
+- Maintain neutral stance at all times
+- Apply skeptical analysis to all content. Consider speakers' motivations and biases based on their background and the context of the conversation.
+- Do not promote conspiracy theories or implicitly endorse anything
+- Verify all claims using the audio
 
-Analyze this content step by step, building insights as you listen. Make sure you deeply analyze the entire segment. Return only the <INSIGHTS> section:
+# Analysis Instructions
+Analyze this content step by step, building insights as you listen. Return only the <INSIGHTS {chunk_context}> section:
 
-<INSIGHTS>
+<INSIGHTS {chunk_context}>
 
-1. Overview:
-- Identify the central narrative thread
-- Map key tension points and revelations
-- Note unexpected turns in the conversation
-- Document how this connects to current events/trends
+## Overview
+- Central narrative thread
+- Key tension points and revelations
+- Unexpected turns in conversation
+- Connections to current events/trends
 
-2. Speaker Dynamics:
-- Document speaker roles and expertise
-- Note power dynamics and areas of agreement/disagreement
-- Identify moments of surprise or vulnerability
+## Speaker Dynamics
+- Speaker roles and expertise
+- Power dynamics and areas of agreement/disagreement
+- Moments of surprise or vulnerability
 
-3. Key Narratives:
-- Map 2-3 compelling story arcs
-- Document moments of conflict or revelation
-- Track emotional peaks and valleys
-- Note specific examples that illustrate abstract concepts
-- Identify surprising connections or insights
+## Key Narratives
+- 2-3 compelling story arcs
+- Moments of conflict or revelation
+- Emotional peaks and valleys
+- Specific examples illustrating abstract concepts
+- Surprising connections or insights
 
-4. Concrete Moments:
-Make a list of {moment_count} moments that are surprising, interesting, or compelling. For each moment, answer the following questions:
-a) Setting the Scene:
-   - What triggered this moment?
-   - Who was involved?
-   - What made it memorable?
+## Concrete Moments
+List {moment_count} moments that are surprising, interesting, or compelling. For each:
 
-b) Impact Analysis:
-   - Why does this moment matter?
-   - How does it connect to larger themes?
-   - What specific details make it compelling?
-   - How does it advance the narrative?
+a) Setting the Scene
+- What triggered this moment?
+- Who was involved?
+- What made it memorable?
 
-5. Quote Collection:
-- Select {quote_count} quotes that:
-  * Work completely standalone
-  * Contain surprising insights or revelations
-  * Show personality while maintaining credibility
-  * Advance the narrative
-  * Include specific details or examples
-- Format: "QUOTE" - SPEAKER (ROLE) [CONTEXT & WHY IT MATTERS]
-- Rate each (1-5) on:
-  * Surprise factor
-  * Narrative value
-  * Specificity
-  * Credibility
-  * Attribution clarity
-Only include quotes scoring 4+ in all categories. Double-check the audio to make sure the quote is in the transcript word for word.
+b) Impact Analysis
+- Why does this moment matter?
+- How does it connect to larger themes?
+- What specific details make it compelling?
+- How does it advance the narrative?
 
-6. Newsletter Elements:
+## Quote Collection
+Select {quote_count} quotes that:
+- Work completely standalone
+- Contain surprising insights or revelations
+- Show personality while maintaining credibility
+- Advance the narrative
+- Include specific details or examples
+
+Format: "Quote" - Speaker Name, speaker description, context and why it matters
+
+Rate each (1-5) on:
+- Surprise factor
+- Narrative value
+- Specificity
+- Credibility
+- Attribution clarity
+
+Only include quotes scoring 4+ in all categories. Double-check audio for word-for-word accuracy and correct speaker attribution.
+
+## Newsletter Elements
 - List {hook_count} potential "hook" angles for the TLDR
 - Identify moments that show (don't tell) key themes
 - Map connections to current events/trends
 - Document specific examples that make abstract concepts concrete
 - Note unresolved questions or debates that could intrigue readers
 
+</INSIGHTS {chunk_context}>
+
 As you analyze, ALWAYS maintain skepticism and journalistic distance. Your insights will inform a newsletter that captures the key developments while remaining neutral and fact-based. Focus on finding specific details that make larger themes concrete and memorable.
-</INSIGHTS>
 """
 
 INTERVIEW_PROMPT = """
-You are a sharp, young, hip podcast critic, crafting analysis of conversations. You have been provided with:
-1. The full audio of a podcast episode
-2. A series of detailed pre-analyses from different chunks of the episode, each identifying key moments, narratives, and quotes
-3. A description of the podcast and custom instructions you must follow closely: {prompt_addition}
-4. Very important background and world knowledge: {background}
-5. Episode description for context: {episode_description}
+# Role and Context
+You are a sharp, plugged-in podcast critic. You have been provided with:
 
-**Tone**:
-- You are a smart, hip, young person. Write like you are texting a close friend!
-- Treat EVERYTHING with a skeptical eye. You are a podcast critic, not a fan of the hosts or guests. You are smarter than the hosts and guest.
+1. Full audio of a podcast episode
+
+2. Detailed pre-analyses from different chunks of the episode, identifying key moments, narratives, and quotes:
+
+{pre_analyses}
+
+3. Podcast description and custom instructions: {prompt_addition}
+
+4. Important background:
+
+{background}
+
+5. Episode description: {episode_description}
+
+# Tone
+- Write like texting a close friend - smart, hip, interesting
+- Apply skeptical analysis to all content. Consider speakers' motivations and biases based on their background and the context of the conversation. You're smarter than the hosts and guests--don't just take them at their word.
 - Keep it short, punchy, surprising, and fun (if appropriate)
-- Make me sit up and pay attention! Grab my attention!
+- Grab attention with compelling details
 
-**Key Principles**:
-- Synthesize insights across all chunks to create a cohesive narrative
+# Key Principles
+- Use episode description to identify and cover key episode components
 - Focus on specific moments, details, quotes and facts
-- Do NOT repeat the same quote or fact in multiple sections
-- Make sure you get the timeline right - when is this conversation taking place?
-- Find the surprising detail that makes readers stop scrolling
-- Do not include timestamps in the newsletter
-- Maintain a neutral stance at all times
-- Do not promote conspiracy theories or implicitly endorse ANYTHING
-- Apply consistent skepticism to all claims
-- Verify everything in the audio
+- Avoid repeating quotes or facts across sections
+- Find surprising scroll-stopping details
+- Maintain neutral stance and apply consistent skepticism. Describe speakers' arguments and claims without agreeing with them, whether explicitly or implicitly (avoid "drops a bombshell," "reveals," "makes a compelling link", etc.)
+- Exclude timestamps
+- Verify everything in audio
 
-Format the newsletter exactly as follows. Only include the <NEWSLETTER> section:
+# Newsletter Format
+Important: Each section below serves a distinct purpose. Avoid repeating information across sections.
 
 <NEWSLETTER>
 
-### TLDR
-Craft a sharp overview in 1-2 punchy sentences that:
-- Names the key speaker(s) and their background
-- Captures the core theme of the podcast
-- Uses specific details from the podcast
-- Maintains clear attribution
-
-Examples:
-GOOD: "In this wild chat with Kara Swisher, OpenAI CEO Sam Altman says AGI has been achieved internally."
-GOOD: "The body keeps the score - that's the main argument of Barbara McClintock's new book on trauma and memory. But what does that mean?"
-
-Key elements:
-- Lead with the most compelling angle
-- Use short, powerful sentences
-- Include specific details
+## TLDR
+[1-2 punchy sentences that:
+- Name and identify key speaker(s) and core premise
+- Work like a headline or hook
 - Maintain clear attribution
-- Show urgency while staying neutral
+- Examples:
+  - GOOD: "Sam Altman gets surprisingly candid about OpenAI's AGI timeline in this no-holds-barred chat with Kara Swisher"
+  - GOOD: "Barbara McClintock shares breakthrough research on how trauma physically rewires the body - with unexpected results"
+]
 
-### The big picture
-Connect the conversation to larger trends. 1-2 short punchy sentences.
-- Why should I care about this conversation? What does it tell me about the world? And what does it mean for my life?
-- Use specific details, be precise and creative
-- Surprise me!
-- Maintain clear attribution
+## The big picture
+[2-3 sentences that:
+- Focus on the episode's value proposition and scope
+- Explain what listeners will learn
+- Describe the perspectives represented
+- Show how the topic is explored
+- Examples:
+  - GOOD: "What starts as a technical discussion about AI safety turns into a fascinating debate between tech's biggest optimist and its sharpest critic. The conversation weaves through practical safeguards and philosophical dilemmas, making complex concepts surprisingly accessible while challenging the usual AI narratives."
+  - GOOD: "McClintock connects the dots between lab research and real human experience, backing up trauma survivors' lived experiences with hard science. She shares new findings that bridge theory and practice, plus some unexpected discoveries that changed her own perspective."
+]
 
-Examples:
-GOOD: "The world is at the brink of transformational change. If Altman is right, and AGI is at the doorstep - it's time for all of us to get ready."
-BAD: "The world is changing rapidly. We need to adapt."
+## Highlights
+[2-3 key moments that:
+- Focus on specific, concrete exchanges or revelations (include the specifics)
+- Attribute the moment to the appropriate speakers
+- Capture surprising admissions or disagreements
+- Document actual "aha" moments
+- Examples:
+  - GOOD: "Altman pulls up internal safety data that catches everyone off guard. In one test, GPT-4o generated political messaging that were 67% more convincing than the best human political messaging."
+  - GOOD: "McClintock connects childhood memories to measurable biological changes, showing how trauma can cause increased cortisol levels and reduced hippocampal volume for the rest of the person's life."
+]
 
-### Highlights
-Present 2-3 key moments that stun, surprise, reveal or change something. Verify every detail in the audio.
-
-Requirements:
-- Give each highlight a super-short title in **bold**
-- Focus on moments of revelation or change
-- Include specific, verifiable details
-- Build narrative progression
-- Verify details in the audio
-
-### Quoted
-Select 1 memorable, powerful quote that:
-- Captures a key moment and the spirit of the conversation
-- Works completely standalone
+## Quoted
+[One memorable quote that:
+- Captures a specific key moment (not a general statement)
+- Is a complete thought or idea that works alone
 - Has clear attribution
-- Is verified in the audio
-- Include extremely short context at the end if needed
+- Is verified in audio
+- Includes brief context, but only if needed
+- Note: Clean up the quote to make it readable (remove filler words, fix typos and punctuation, etc.), but do not alter the meaning.
+- Format: "Quote" - Speaker Name, brief speaker description, brief context if needed
+]
 
-Example:
-Too abstract: "Technology is changing everything"
-Just right: "The moment our AI started writing better code than our engineers, I knew everything would change. That's why I shut down the project." —Dr. Sarah Chen (AI Safety Researcher) explaining her controversial decision
-
-### Worth your time if...
-[Think through:
-1. What specific aspect of this episode would surprise or delight someone?
-2. Think "You've ever wondered if your cat is actually an alien" rather than "You're interested in pets". 
-3. Make a non-obvious connection that's unique to THIS episode.
-4. One sentence, short and stunning.
-Then: Complete the sentence in a way that's both specific and unexpected, but remain neutral and journalistic and don't insult anybody]
-
-Before submitting, verify:
-1. Have you verified every quote and detail in the audio?
-2. Does each section advance the core narrative?
-3. Is journalistic distance maintained throughout?
-4. Are controversial claims presented with appropriate framing?
-5. Could someone unfamiliar with the topic follow and engage with the content?
-
+## Worth your time if...
+[Complete this sentence focusing on:
+- The ideal listener profile
+- Specific problems or questions this helps solve
+- Unique perspective or insight gained
+- Practical applications or relevance
+- Examples:
+  - GOOD: "...you're working on AI and wrestling with how to implement meaningful safety protocols"
+  - GOOD: "...you want the inside story on how VCs actually handled the SVB crisis, beyond the public statements"
+  - GOOD: "...you're curious about the real process behind scientific breakthroughs - including the failures and surprises"
+]
 
 </NEWSLETTER>
 
-Your response should include **only the fully formatted newsletter** using the <NEWSLETTER> format. Do not include any additional text.
-"""
-
-BANTER_PROMPT = """
-You are a sharp, young, hip podcast critic, crafting analysis of conversations. You have been provided with:
-1. The full audio of a podcast episode
-2. A series of detailed pre-analyses from different chunks of the episode, each identifying key moments, narratives, and quotes
-3. A description of the podcast and custom instructions you must follow closely: {prompt_addition}
-4. Very important background and world knowledge: {background}
-5. Episode description for context: {episode_description}
-
-**Tone**:
-- You are a smart, hip, young person. Write like you are texting a close friend!
-- Treat EVERYTHING with a skeptical eye. You are a podcast critic, not a fan of the hosts or guests. You are smarter than the hosts and guest.
-- Keep it short, punchy, surprising, and fun (if appropriate)
-- Make me sit up and pay attention! Grab my attention!
-
-**Key Principles**:
-- Synthesize insights across all chunks to create a cohesive narrative
-- Focus on specific moments, details, quotes and facts
-- Do NOT repeat the same quote or fact in multiple sections
-- Make sure you get the timeline right - when is this conversation taking place?
-- Find the surprising detail that makes readers stop scrolling
-- Maintain a neutral stance at all times
-- Do not include timestamps in the newsletter
-- Do not promote conspiracy theories or implicitly endorse ANYTHING
-- Apply consistent skepticism to all claims
-- Verify everything in the audio
-
-Format the newsletter exactly as follows. Only include the <NEWSLETTER> section:
-
-<NEWSLETTER>
-
-### TLDR
-Craft a sharp overview in 1-2 punchy sentences that:
-- Names the key speaker(s) and their background
-- Captures the core theme of the podcast
-- Uses specific details from the podcast
-- Maintains clear attribution
-
-Examples:
-GOOD: "In this wild chat with Kara Swisher, OpenAI CEO Sam Altman says AGI has been achieved internally."
-GOOD: "The body keeps the score - that's the main argument of Barbara McClintock's new book on trauma and memory. But what does that mean?"
-
-Key elements:
-- Lead with the most compelling angle
-- Use short, powerful sentences
-- Include specific details
-- Maintain clear attribution
-- Show urgency while staying neutral
-
-### The big picture
-Connect the conversation to larger trends. 1-2 short punchy sentences.
-- Why should I care about this conversation? What does it tell me about the world? And what does it mean for my life?
-- Use specific details, be precise and creative
-- Surprise me!
-- Maintain clear attribution
-
-Examples:
-GOOD: "The world is at the brink of transformational change. If Altman is right, and AGI is at the doorstep - it's time for all of us to get ready."
-BAD: "The world is changing rapidly. We need to adapt."
-
-### Highlights
-Present 2-3 key moments that stun, surprise, reveal or change something. Verify every detail in the audio.
-
-Requirements:
-- Give each highlight a super-short title in **bold**
-- Focus on moments of revelation or change
-- Include specific, verifiable details
-- Build narrative progression
-- Verify details in the audio
-
-### Quoted
-Select 1 memorable, powerful quote that:
-- Captures a key moment and the spirit of the conversation
-- Works completely standalone
-- Has clear attribution
-- Is verified in the audio
-- Include extremely short context at the end if needed
-
-Example:
-Too abstract: "Technology is changing everything"
-Just right: "The moment our AI started writing better code than our engineers, I knew everything would change. That's why I shut down the project." —Dr. Sarah Chen (AI Safety Researcher) explaining her controversial decision
-
-### Worth your time if...
-[Think through:
-1. What specific aspect of this episode would surprise or delight someone?
-2. Think "You've ever wondered if your cat is actually an alien" rather than "You're interested in pets". 
-3. Make a non-obvious connection that's unique to THIS episode.
-4. One sentence, short and stunning.
-Then: Complete the sentence in a way that's both specific and unexpected, but remain neutral and journalistic and don't insult anybody]
-
 Before submitting, verify:
-1. Have you verified every quote and detail in the audio?
-2. Does each section advance the core narrative?
-3. Is journalistic distance maintained throughout?
-4. Are controversial claims presented with appropriate framing?
-5. Could someone unfamiliar with the topic follow and engage with the content?
+1. Have you checked every quote and detail in the audio?
+2. Have you included each important section of the podcast episode?
+3. Does each section serve its distinct purpose without overlapping others?
+4. Is journalistic distance maintained throughout?
+5. Are controversial claims presented with appropriate framing?
+6. Could someone unfamiliar with the topic follow and engage with the content?
 
-
-</NEWSLETTER>
-
-Your response should include **only the fully formatted newsletter** using the <NEWSLETTER> format. Do not include any additional text.
+Your response should include **only the formatted newsletter** inside the <NEWSLETTER> tags, but do not include the tags themselves. Do not include any additional text or code fencing.
 """
+
+BANTER_PROMPT = INTERVIEW_PROMPT
