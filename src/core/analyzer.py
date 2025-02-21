@@ -1,9 +1,8 @@
 import hashlib
 import logging
 import os
-import time
 from datetime import datetime
-from typing import Optional, List, Dict, Union
+from typing import Optional, List, Tuple
 import asyncio
 
 import google.generativeai as genai
@@ -85,7 +84,6 @@ class PodcastAnalyzer:
         self, 
         audio_path: str, 
         name: str, 
-        category: str, 
         prompt_addition: str, 
         episode_description: str = "",
         chunk_context: Optional[str] = None,
@@ -98,9 +96,7 @@ class PodcastAnalyzer:
         Args:
             audio_path: Path to audio file
             name: Podcast name
-            category: Podcast category (interview/banter)
             prompt_addition: Additional podcast context
-            episode_description: Episode-specific description
             chunk_context: If analyzing a chunk, description of which part (e.g. "Part 1 of 3, 0-20 minutes")
             moment_count: Number of moments to analyze (fewer for chunks)
             quote_count: Number of quotes to extract (fewer for chunks)
@@ -109,9 +105,6 @@ class PodcastAnalyzer:
         Returns:
             Structured analysis text
         """
-        logger.info(f"Starting analysis for: {audio_path}")
-        start_time = time.time()
-        
         try:
             # Check if file already exists in Gemini storage
             file_hash = self._get_file_hash(audio_path)
@@ -122,26 +115,26 @@ class PodcastAnalyzer:
             for existing_file in existing_files:
                 gemini_hash = existing_file.sha256_hash.decode() if isinstance(existing_file.sha256_hash, bytes) else existing_file.sha256_hash
                 if gemini_hash == file_hash:
-                    logger.info("Found matching file in Gemini storage")
+                    logger.info(f"Found {chunk_context or 'audio'} in Gemini storage")
                     audio_file = existing_file
                     break
             else:
-                logger.info("Uploading audio to Gemini...")
+                logger.info(f"Uploading audio {chunk_context or ''} to Gemini...")
                 # Run upload in thread pool
                 audio_file = await asyncio.to_thread(genai.upload_file, audio_path)
             
             # Get initial insights from audio
-            logger.info(f"Step 1: Pre-analysis from audio using {self.preanalysis_model.model_name}...")
+            logger.info(f"Step 1: Pre-analysis using {self.preanalysis_model.model_name}...")
             formatted_prompt = PREANALYSIS_PROMPT.format(
                 name=name,
                 prompt_addition=prompt_addition,
                 background=BACKGROUND,
+                episode_description=episode_description,
                 chunk_context=chunk_context or "an episode",
                 moment_count=moment_count,
                 quote_count=quote_count,
                 hook_count=hook_count
             )
-            logger.info(f"Using prompt addition for analysis: {prompt_addition[:50]}..." if prompt_addition else "No prompt addition detected")
             
             # Run generate_content in thread pool
             preanalysis_response = await asyncio.to_thread(
@@ -162,7 +155,6 @@ class PodcastAnalyzer:
         self,
         chunk_paths: List[str],
         name: str,
-        category: str,
         prompt_addition: str,
         episode_description: str = ""
     ) -> List[str]:
@@ -171,39 +163,36 @@ class PodcastAnalyzer:
         Args:
             chunk_paths: List of paths to audio chunks
             name: Podcast name
-            category: Podcast category
             prompt_addition: Additional podcast context
             episode_description: Episode description
             
         Returns:
             List of analysis texts, one per chunk
         """
-        logger.info(f"Starting parallel chunk analysis for {len(chunk_paths)} chunks...")
-
-        async def analyze_chunk(i: int, chunk_path: str) -> str:
-            """Analyze a single chunk asynchronously."""
+        async def analyze_chunk(i: int, chunk_path: str) -> Tuple[int, str]:
+            """Analyze a single chunk asynchronously. Returns (chunk_index, analysis)"""
             logger.info(f"Analyzing chunk {i+1}/{len(chunk_paths)}: {chunk_path}")
             
-            # Use smaller counts for chunk analysis
             chunk_analysis = await self.analyze_audio(
                 audio_path=chunk_path,
                 name=name,
-                category=category,
                 prompt_addition=prompt_addition,
                 episode_description=episode_description,
-                chunk_context=f"Part {i+1} of {len(chunk_paths)}, {i*20}-{(i+1)*20} minutes",
-                moment_count=7,  # Reduced from 10
-                quote_count=8,   # Reduced from 15
-                hook_count=3     # Reduced from 6
+                chunk_context=f"Part {i+1} of {len(chunk_paths)}, starting from minute {i*20}",
+                moment_count=7,
+                quote_count=8,
+                hook_count=3
             )
             logger.info(f"Completed analysis of chunk {i+1}/{len(chunk_paths)}")
-            return chunk_analysis
+            return (i, chunk_analysis)
 
         # Create tasks for all chunks and run them concurrently
         tasks = [analyze_chunk(i, chunk_path) for i, chunk_path in enumerate(chunk_paths)]
-        chunk_analyses = await asyncio.gather(*tasks)
+        chunk_results = await asyncio.gather(*tasks)
         
-        logger.info(f"Completed parallel analysis of all {len(chunk_paths)} chunks")
+        # Sort by chunk index and extract just the analyses
+        chunk_analyses = [analysis for _, analysis in sorted(chunk_results, key=lambda x: x[0])]
+        
         return chunk_analyses
 
     def format_newsletter(self, analysis: str, name: str, title: str, publish_date: datetime) -> str:
@@ -299,7 +288,6 @@ class PodcastAnalyzer:
             # Normalize optional parameters
             analysis_params = {
                 'name': name,
-                'category': category,
                 'prompt_addition': prompt_addition or "",
                 'episode_description': episode_description or ""
             }
@@ -312,32 +300,36 @@ class PodcastAnalyzer:
             
             # Get analyses based on whether we have chunks
             if chunk_paths and len(chunk_paths) > 0:
-                logger.info(f"Processing {len(chunk_paths)} chunks...")
+                logger.info(f"Processing {len(chunk_paths)} chunks using {self.preanalysis_model.model_name}...")
                 analyses = await self.analyze_chunks(
                     chunk_paths=chunk_paths,
                     **analysis_params
                 )
-                logger.info(f"Completed analysis of {len(analyses)} chunks")
             else:
-                logger.info("No chunks provided or episode too short, analyzing full audio...")
+                logger.info("No chunks provided or episode too short; analyzing full audio using {self.preanalysis_model.model_name}...")
                 analyses = [await self.analyze_audio(
                     audio_path=audio_path,
                     **analysis_params
                 )]
                 logger.info("Completed full audio analysis")
             
-            # Select prompt based on podcast format
+            # Combine all pre-analyses into a single string
+            combined_analyses = "\n\n".join(analyses)
+            
+            # Select prompt based on podcast format and include pre-analyses
             if category == 'interview':
                 prompt = INTERVIEW_PROMPT.format(
                     prompt_addition=prompt_addition,
                     episode_description=episode_description,
                     background=BACKGROUND,
+                    pre_analyses=combined_analyses
                 )
             elif category == 'banter':
                 prompt = BANTER_PROMPT.format(
                     prompt_addition=prompt_addition,
                     episode_description=episode_description,
                     background=BACKGROUND,
+                    pre_analyses=combined_analyses
                 )
             else:
                 logger.warning(f"Unknown podcast category: {category}, defaulting to interview prompt")
@@ -345,19 +337,16 @@ class PodcastAnalyzer:
                     prompt_addition=prompt_addition,
                     episode_description=episode_description,
                     background=BACKGROUND,
+                    pre_analyses=combined_analyses
                 )
             
-            # Generate newsletter using analyses and full audio
+            logger.debug("Using formatted prompt for final generation:\n%s", prompt)
+            
+            # Generate newsletter using prompt and full audio only
             logger.info("Generating final newsletter...")
-            content_parts = [prompt]
-            content_parts.extend(analyses)
-            logger.info(f"Including {len(analyses)} analyses in final generation")
-            
-            # Add the full audio for final context
             audio_file = await asyncio.to_thread(genai.upload_file, audio_path)
-            content_parts.append(audio_file)
+            content_parts = [prompt, audio_file]
             
-            # Run generate_content in thread pool
             writing_response = await asyncio.to_thread(
                 self.writing_model.generate_content,
                 content_parts,
