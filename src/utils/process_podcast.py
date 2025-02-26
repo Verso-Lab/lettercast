@@ -126,7 +126,7 @@ class PodcastProcessor:
         podcast_data = {
             **metadata,
             "rss_url": rss_url,
-            "frequency": str(frequency) if frequency is not None else None,
+            "frequency": frequency,
             "category": category
         }
         

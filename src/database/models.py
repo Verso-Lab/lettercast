@@ -34,7 +34,7 @@ class PodcastBase(SQLModel):
     publisher: Optional[str] = None
     description: Optional[str] = None
     image_url: Optional[str] = None
-    frequency: Optional[str] = None
+    frequency: Optional[float] = None
     tags: Optional[Dict[str, Any]] = Field(default=None, sa_type=JSON)
     category: str
     prompt_addition: Optional[str] = None
