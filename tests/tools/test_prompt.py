@@ -55,13 +55,13 @@ async def select_podcast():
 def select_episode(episodes):
     """Select an episode from time-sorted list"""
     if not episodes:
-        print("No episodes found in the last week.")
+        print("No episodes found in the last month.")
         return None
         
     # Sort episodes by publish date (newest first)
     sorted_episodes = sorted(episodes, key=lambda x: x['publish_date'], reverse=True)
     
-    print("\nAvailable episodes from the last week:")
+    print("\nAvailable episodes from the last month:")
     for i, episode in enumerate(sorted_episodes, 1):
         local_time = episode['publish_date'].astimezone()
         publish_time = local_time.strftime('%a %m/%d/%y %H:%M %Z')
@@ -91,7 +91,7 @@ async def main():
         # Get recent episodes
         all_episodes = get_recent_episodes(podcast)['episodes']
         
-        # Filter for last week
+        # Filter for last month
         cutoff_time = datetime.now(pytz.UTC) - timedelta(days=30)
         recent_episodes = [
             ep for ep in all_episodes 
